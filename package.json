@@ -1,0 +1,17 @@
+{
+  "name": "callous-chaos",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "npm run fetch-news && astro build",
+    "fetch-news": "node scripts/fetch-news.js",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/tailwind": "^5.1.0",
+    "tailwindcss": "^4.3.1",
+    "astro": "^5.0.6"
+  }
+}
