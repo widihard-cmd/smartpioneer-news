@@ -4,8 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "npm run fetch-news && astro build",
-    "fetch-news": "node scripts/fetch-news.js",
+    "build": "astro build",
     "preview": "astro preview"
   },
   "dependencies": {

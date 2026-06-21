@@ -4,6 +4,9 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+  schedule:
+    # Fetch news every 6 hours
+    - cron: '0 */6 * * *'
 
 permissions:
   contents: read
@@ -15,12 +18,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fetch-news:
+    runs-on: ubuntu-latest
+    # Only run on schedule
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/fetch-news.mjs
+            src/data/
+            .env
+          sparse-checkout-cone-mode: recursive
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm ci
+      - name: Fetch news
+        run: node scripts/fetch-news.mjs
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+      - name: Commit & Push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          git add src/data/news.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "auto: update news $(date +'%Y-%m-%d %H:%M')"
+          git push
+
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
