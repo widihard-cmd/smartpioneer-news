@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import NewsCard from '../../components/NewsCard.astro';
+import newsData from '../../data/news.json';
+---
+<Layout title="Berita Pi Network">
+  <Header />
+  <main class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold mb-2">Berita Pi Network</h1>
+      <p class="text-gray-400">Sumber terpercaya dari minepi.com, Stanford, KYB Pi, dan Pi Network Venture</p>
+    </div>
+    
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {newsData.map((item) => (
+        <NewsCard 
+          title={item.title} 
+          description={item.description} 
+          date={item.date} 
+          source={item.source} 
+          url={item.url}
+        />
+      ))}
+    </div>
+    
+    {newsData.length === 0 && (
+      <div class="text-center py-12">
+        <p class="text-gray-400">Belum ada berita. Cek kembali nanti ya!</p>
+      </div>
+    )}
+  </main>
+  <Footer />
+</Layout>
