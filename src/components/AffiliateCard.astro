@@ -1,0 +1,19 @@
+---
+export interface Props {
+  name: string;
+  url: string;
+  image?: string;
+}
+const { name, url, image } = Astro.props;
+---
+<a href={url} target="_blank" rel="noopener" class="block bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition border border-gray-700 hover:border-purple-500">
+  {image ? (
+    <img src={image} alt={name} class="w-full h-40 object-cover rounded-lg mb-3" />
+  ) : (
+    <div class="w-full h-40 bg-gradient-to-br from-purple-600 to-pink-500 rounded-lg mb-3 flex items-center justify-center">
+      <span class="text-4xl">🛒</span>
+    </div>
+  )}
+  <h3 class="font-semibold text-white">{name}</h3>
+  <p class="text-sm text-purple-400 mt-2">Klik untuk melihat →</p>
+</a>
