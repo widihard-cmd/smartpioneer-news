@@ -5,8 +5,7 @@ import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://widihard-cmd.github.io',
-  base: '/smartpioneer-news',
+  site: 'https://widihard-cmd.github.io/smartpioneer-news',
   vite: {
     plugins: [tailwindcss()]
   },
