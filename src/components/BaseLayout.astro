@@ -1,0 +1,91 @@
+---
+/**
+ * BaseLayout.astro
+ * Root layout untuk semua halaman SmartPioneer.
+ * Menyertakan: NavBar, SEO meta, ViewTransitions, dan PersistentPlayer slot.
+ */
+import '../styles/global.css';
+import NavBar from './NavBar.astro';
+import PersistentPlayer from './PersistentPlayer';  // React island
+import { ViewTransitions } from 'astro:transitions';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  article?: boolean;
+}
+
+const {
+  title = 'SmartPioneer — Pi Network News & Insights',
+  description = 'Platform berita dan analisis terpercaya seputar Pi Network, kripto, dan inovasi blockchain.',
+  ogImage = '/og-default.jpg',
+  article = false,
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1A0B3B" />
+
+  <!-- SEO Core -->
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonicalURL} />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content={article ? 'article' : 'website'} />
+  <meta property="og:url" content={canonicalURL} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image" content={new URL(ogImage, Astro.site)} />
+  <meta property="og:site_name" content="SmartPioneer" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={new URL(ogImage, Astro.site)} />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Sitemap -->
+  <link rel="sitemap" href="/sitemap-index.xml" />
+
+  <!-- View Transitions — keeps AudioPlayer alive across navigations -->
+  <ViewTransitions />
+
+  <!-- Preload critical font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+
+<body>
+  <!-- Persistent NavBar -->
+  <NavBar />
+
+  <!-- Page Content -->
+  <main>
+    <slot />
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gold-500/10 py-10 mt-20 text-center text-sm text-pi-300/50">
+    <p>© {new Date().getFullYear()} SmartPioneer · Built on Pi Network</p>
+  </footer>
+
+  <!--
+    PersistentPlayer — React island dengan transition:persist
+    Tetap hidup saat navigasi antar halaman (Astro View Transitions).
+    client:load → hydrate segera agar player siap sebelum user klik.
+  -->
+  <PersistentPlayer client:load transition:persist="audio-player" />
+</body>
+</html>

@@ -1,0 +1,79 @@
+# netlify.toml
+# ──────────────────────────────────────────────────────────────
+# SmartPioneer — Netlify Deployment Configuration
+# ──────────────────────────────────────────────────────────────
+
+[build]
+  command   = "npm run build"
+  publish   = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS    = "--legacy-peer-deps"
+
+# ── Dev server ─────────────────────────────────────────────────
+[dev]
+  command = "npm run dev"
+  port    = 4321
+
+# ── Headers: security + cache ──────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/audio/*"
+  [headers.values]
+    Cache-Control  = "public, max-age=86400"
+    Accept-Ranges  = "bytes"
+
+# ── Redirects ──────────────────────────────────────────────────
+[[redirects]]
+  from   = "/berita"
+  to     = "/news"
+  status = 301
+
+[[redirects]]
+  from   = "/artikel"
+  to     = "/news"
+  status = 301
+
+# Fallback for SPA-like 404s (Astro handles its own 404 page)
+[[redirects]]
+  from   = "/*"
+  to     = "/404"
+  status = 404
+
+# ── Netlify Functions (webhook endpoint) ───────────────────────
+# POST /api/revalidate → memicu rebuild dari webhook eksternal
+# (Contentful webhook, Zapier, Make, dll.)
+[functions]
+  directory = "netlify/functions"
+
+# ── Plugin: sitemap & image optimization ──────────────────────
+[[plugins]]
+  package = "@astrojs/sitemap"
+
+# Uncomment jika pakai Netlify Image CDN:
+# [[plugins]]
+#   package = "@netlify/plugin-nextjs"

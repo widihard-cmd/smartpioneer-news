@@ -1,25 +1,167 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
+/**
+ * src/pages/index.astro
+ * Homepage SmartPioneer — Hero + News Grid
+ */
+import BaseLayout from '../components/BaseLayout.astro';
 import NewsCard from '../components/NewsCard.astro';
-import newsData from '../data/news.json';
+import { getContentfulArticles } from '../lib/contentful';
+import fs from 'fs';
+import path from 'path';
+
+// ── Fetch articles: Contentful CMS + RSS JSON files ──────────
+let articles = [];
+
+// 1) Contentful (editorial)
+try {
+  const cmsArticles = await getContentfulArticles();
+  articles.push(...cmsArticles);
+} catch (e) {
+  console.warn('Contentful fetch skipped:', e.message);
+}
+
+// 2) RSS auto-fetched JSON files
+const newsDir = path.join(process.cwd(), 'src/content/news');
+if (fs.existsSync(newsDir)) {
+  const files = fs.readdirSync(newsDir)
+    .filter(f => f.endsWith('.json'))
+    .sort()
+    .reverse()
+    .slice(0, 30);
+
+  for (const file of files) {
+    const raw = fs.readFileSync(path.join(newsDir, file), 'utf8');
+    articles.push(JSON.parse(raw));
+  }
+}
+
+// Sort all by date, deduplicate
+const seen = new Set();
+const sortedArticles = articles
+  .filter(a => {
+    if (seen.has(a.id)) return false;
+    seen.add(a.id);
+    return true;
+  })
+  .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+  .slice(0, 12);
+
+const featuredArticle = sortedArticles[0];
+const gridArticles = sortedArticles.slice(1);
 ---
-<Layout title="Beranda">
-  <Header />
-  <main class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-8">Berita Terbaru Pi Network</h1>
-    <div class="grid md:grid-cols-2 gap-6">
-      {newsData.map((item) => (
-        <NewsCard 
-          title={item.title} 
-          description={item.description} 
-          date={item.date} 
-          source={item.source} 
-          url={item.url}
-        />
+
+<BaseLayout
+  title="SmartPioneer — Berita Pi Network Terkini"
+  description="Platform berita dan analisis terpercaya seputar Pi Network, kripto, dan inovasi blockchain."
+>
+
+  <!-- ======= HERO SECTION ======= -->
+  <section class="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-6 pt-24 pb-16 overflow-hidden">
+
+    <!-- Background decoration -->
+    <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+      <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-pi-800/20 blur-3xl" />
+      <div class="absolute bottom-0 right-1/4 w-[300px] h-[300px] rounded-full bg-gold-500/5 blur-2xl" />
+    </div>
+
+    <!-- Badge -->
+    <div class="animate-slide-up mb-6">
+      <span class="pi-badge">
+        <span class="w-1.5 h-1.5 rounded-full bg-gold-500 animate-pulse" />
+        Pi Network News Hub
+      </span>
+    </div>
+
+    <!-- Headline -->
+    <h1 class="animate-slide-up text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6 max-w-4xl" style="animation-delay:0.1s">
+      <span class="text-white">Berita Pi </span>
+      <span class="gold-gradient-text">Terdepan</span>
+      <br />
+      <span class="text-pi-300/70 text-4xl md:text-5xl font-medium">untuk Pioneer Indonesia</span>
+    </h1>
+
+    <!-- Subheadline -->
+    <p class="animate-slide-up text-lg text-pi-300/60 max-w-xl leading-relaxed mb-10" style="animation-delay:0.2s">
+      Update harian ekosistem Pi Network, analisis pasar kripto,
+      dan wawasan terpercaya dari komunitas Pioneer.
+    </p>
+
+    <!-- CTA buttons -->
+    <div class="animate-slide-up flex flex-wrap gap-4 justify-center" style="animation-delay:0.3s">
+      <a href="#news" class="btn-primary animate-glow-pulse">
+        <span>Baca Berita</span>
+        <span aria-hidden="true">→</span>
+      </a>
+      <a
+        href="/tentang"
+        class="inline-flex items-center gap-2 px-6 py-2.5 glass-card text-sm font-medium text-pi-300/80 hover:text-white transition-colors"
+      >
+        Tentang SmartPioneer
+      </a>
+    </div>
+  </section>
+
+  <!-- ======= FEATURED ARTICLE ======= -->
+  {featuredArticle && (
+    <section class="px-6 max-w-screen-xl mx-auto mb-16">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="pi-badge">Featured</span>
+        <div class="h-px flex-1 bg-gold-500/10" />
+      </div>
+      <a href={`/news/${featuredArticle.slug}`} class="group block glass-card overflow-hidden md:flex gap-0 hover:scale-[1.01] transition-transform duration-300">
+        {featuredArticle.coverImage && (
+          <div class="md:w-2/5 h-56 md:h-auto overflow-hidden shrink-0">
+            <img
+              src={featuredArticle.coverImage}
+              alt={featuredArticle.title}
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="eager"
+            />
+          </div>
+        )}
+        <div class="p-8 flex flex-col justify-center">
+          <span class="pi-badge mb-4 self-start">{featuredArticle.category}</span>
+          <h2 class="text-2xl md:text-3xl font-bold text-white leading-snug mb-3 group-hover:text-gold-300 transition-colors">
+            {featuredArticle.title}
+          </h2>
+          <p class="text-pi-300/60 leading-relaxed mb-4 line-clamp-3">{featuredArticle.excerpt}</p>
+          <span class="text-gold-500 text-sm font-medium group-hover:gap-3 flex items-center gap-2 transition-all">
+            Baca selengkapnya <span aria-hidden="true">→</span>
+          </span>
+        </div>
+      </a>
+    </section>
+  )}
+
+  <!-- ======= NEWS GRID ======= -->
+  <section id="news" class="px-6 max-w-screen-xl mx-auto pb-20">
+    <div class="flex items-center gap-3 mb-8">
+      <h2 class="text-xl font-semibold text-white">Berita Terbaru</h2>
+      <div class="h-px flex-1 bg-gold-500/10" />
+      <span class="text-xs text-pi-300/40">{gridArticles.length} artikel</span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {gridArticles.map((article, i) => (
+        <div style={`animation-delay: ${i * 0.07}s`}>
+          <NewsCard
+            title={article.title}
+            excerpt={article.excerpt}
+            slug={article.slug}
+            publishedAt={article.publishedAt}
+            category={article.category}
+            coverImage={article.coverImage}
+            readTime={article.readTime}
+          />
+        </div>
       ))}
     </div>
-  </main>
-  <Footer />
-</Layout>
+
+    {sortedArticles.length === 0 && (
+      <div class="text-center py-24 text-pi-300/40">
+        <p class="text-4xl mb-4">📰</p>
+        <p>Belum ada artikel. Jalankan <code>npm run fetch-news</code> untuk mulai.</p>
+      </div>
+    )}
+  </section>
+</BaseLayout>
