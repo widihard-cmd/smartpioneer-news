@@ -30,11 +30,8 @@ export default defineConfig({
     }),
   ],
 
-  // View Transitions: aktifkan untuk SPA-like navigation
-  // (PersistentPlayer tetap hidup via transition:persist)
-  experimental: {
-    viewTransitions: true, // Built-in di Astro 3.x+, tidak perlu flag di Astro 4
-  },
+  // View Transitions sudah built-in di Astro 4 — tidak perlu experimental flag
+  // Gunakan <ViewTransitions /> component di BaseLayout.astro
 
   // Image optimization bawaan Astro
   image: {

@@ -9,7 +9,7 @@
   functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "24"
+  NODE_VERSION = "22"
   NPM_FLAGS    = "--legacy-peer-deps"
 
 # ── Dev server ─────────────────────────────────────────────────
@@ -70,10 +70,4 @@
 [functions]
   directory = "netlify/functions"
 
-# ── Plugin: sitemap & image optimization ──────────────────────
-[[plugins]]
-  package = "@astrojs/sitemap"
-
-# Uncomment jika pakai Netlify Image CDN:
-# [[plugins]]
-#   package = "@netlify/plugin-nextjs"
+# Sitemap ditangani via @astrojs/sitemap integration di astro.config.mjs
