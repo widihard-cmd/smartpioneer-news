@@ -1,5 +1,12 @@
 ---
-import PortalPage from '../components/PortalPage.astro';
-const cards=[{title:'Pioneer Voice',body:'Karya pembuka koleksi Pioneer Indonesia. Gunakan player di bawah untuk mulai mendengarkan.',meta:'Featured track'},{title:'Playlist Pribadi',body:'Fondasi UI siap. Login dan sinkronisasi cloud akan ditambahkan bersama backend pengguna.',meta:'Coming next'},{title:'Play Analytics',body:'MVP menghitung play di perangkat ini. Versi produksi akan memakai event server dan proteksi hit palsu.',meta:'Analytics MVP'}];
+import BaseLayout from '../components/BaseLayout.astro';
+import MusicLibrary from '../components/MusicLibrary';
 ---
-<PortalPage kicker="πWAVE • Pioneer Radio" title="Musik yang menggerakkan komunitas." intro="Player tetap hidup saat Anda menjelajahi portal. Equalizer visual, antrean lagu, playlist, dan data popularitas dirancang sebagai satu pengalaman." cards={cards}/>
+<BaseLayout title="Pi Music — Pioneer Indonesia" description="Dengarkan 12 lagu SmartPioneer dengan player, equalizer, playlist pribadi, dan play analytics.">
+  <section class="mx-auto min-h-[80vh] max-w-screen-xl px-5 pb-24 pt-32">
+    <p class="section-kicker">πWAVE • Pioneer Radio</p>
+    <h1 class="section-title max-w-4xl">Musik yang menggerakkan komunitas.</h1>
+    <p class="mt-6 max-w-2xl text-lg leading-8 text-pi-200/60">Pilih lagu, simpan favorit ke playlist pribadi, lalu tetap dengarkan saat menjelajahi portal. Metadata seluruh koleksi sudah diseragamkan sebagai SmartPioneer Music.</p>
+    <MusicLibrary client:load />
+  </section>
+</BaseLayout>

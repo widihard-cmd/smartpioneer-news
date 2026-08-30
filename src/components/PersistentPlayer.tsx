@@ -1,27 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Howl } from 'howler';
-
-type Track = {
-  id: string;
-  title: string;
-  artist: string;
-  src: string;
-};
-
-const tracks: Track[] = [
-  {
-    id: 'pioneer-voice',
-    title: 'Pioneer Voice',
-    artist: 'Pioneer Indonesia',
-    src: '/audio/flow_tts.mp3',
-  },
-  {
-    id: 'levy-vision',
-    title: 'Levy Vision',
-    artist: 'Pioneer Indonesia',
-    src: '/audio/test_aura_indo.mp3',
-  },
-];
+import { featuredTrackIndex, tracks } from '../data/tracks';
 
 const ANALYTICS_KEY = 'pioneer-play-analytics';
 
@@ -30,6 +9,7 @@ function recordPlay(trackId: string) {
     const counts = JSON.parse(localStorage.getItem(ANALYTICS_KEY) || '{}');
     counts[trackId] = (counts[trackId] || 0) + 1;
     localStorage.setItem(ANALYTICS_KEY, JSON.stringify(counts));
+    window.dispatchEvent(new CustomEvent('pioneer:analytics-updated'));
   } catch {
     // Audio must continue even when browser storage is unavailable.
   }
@@ -41,9 +21,11 @@ export default function PersistentPlayer() {
   const [progress, setProgress] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [error, setError] = useState('');
+  const [favorite, setFavorite] = useState(false);
 
   const soundRef = useRef<Howl | null>(null);
   const frameRef = useRef<number>(0);
+  const playTimerRef = useRef<number>(0);
   const countedSoundRef = useRef<Howl | null>(null);
   const track = tracks[index];
 
@@ -61,6 +43,7 @@ export default function PersistentPlayer() {
     (nextIndex: number, autoplay = false) => {
       soundRef.current?.unload();
       cancelAnimationFrame(frameRef.current);
+      window.clearTimeout(playTimerRef.current);
       setIndex(nextIndex);
       setProgress(0);
       setError('');
@@ -75,10 +58,13 @@ export default function PersistentPlayer() {
           updateProgress(sound);
           if (countedSoundRef.current !== sound) {
             countedSoundRef.current = sound;
-            recordPlay(nextTrack.id);
+            playTimerRef.current = window.setTimeout(() => recordPlay(nextTrack.id), 10000);
           }
         },
-        onpause: () => setPlaying(false),
+        onpause: () => {
+          setPlaying(false);
+          if (Number(sound.seek()) < 10) window.clearTimeout(playTimerRef.current);
+        },
         onstop: () => setPlaying(false),
         onend: () => loadTrack((nextIndex + 1) % tracks.length, true),
         onloaderror: () => {
@@ -94,12 +80,32 @@ export default function PersistentPlayer() {
   );
 
   useEffect(() => {
-    loadTrack(0);
+    loadTrack(featuredTrackIndex);
     return () => {
       cancelAnimationFrame(frameRef.current);
+      window.clearTimeout(playTimerRef.current);
       soundRef.current?.unload();
     };
   }, [loadTrack]);
+
+  useEffect(() => {
+    const selectTrack = (event: Event) => {
+      const id = (event as CustomEvent<{ id: string }>).detail?.id;
+      const nextIndex = tracks.findIndex((item) => item.id === id);
+      if (nextIndex >= 0) loadTrack(nextIndex, true);
+    };
+    window.addEventListener('pioneer:play-track', selectTrack);
+    return () => window.removeEventListener('pioneer:play-track', selectTrack);
+  }, [loadTrack]);
+
+  useEffect(() => {
+    try {
+      const favorites: string[] = JSON.parse(localStorage.getItem('pioneer-favorites') || '[]');
+      setFavorite(favorites.includes(track.id));
+    } catch {
+      setFavorite(false);
+    }
+  }, [track.id]);
 
   const togglePlayback = () => {
     const sound = soundRef.current;
@@ -110,6 +116,20 @@ export default function PersistentPlayer() {
   const changeTrack = (direction: number) => {
     const nextIndex = (index + direction + tracks.length) % tracks.length;
     loadTrack(nextIndex, playing);
+  };
+
+  const toggleFavorite = () => {
+    try {
+      const favorites: string[] = JSON.parse(localStorage.getItem('pioneer-favorites') || '[]');
+      const next = favorites.includes(track.id)
+        ? favorites.filter((id) => id !== track.id)
+        : [...favorites, track.id];
+      localStorage.setItem('pioneer-favorites', JSON.stringify(next));
+      setFavorite(next.includes(track.id));
+      window.dispatchEvent(new CustomEvent('pioneer:favorites-updated'));
+    } catch {
+      setFavorite(false);
+    }
   };
 
   return (
@@ -149,6 +169,14 @@ export default function PersistentPlayer() {
           {playing ? 'Ⅱ' : '▶'}
         </button>
         <button type="button" onClick={() => changeTrack(1)} aria-label="Lagu berikutnya">⏭</button>
+        <button
+          type="button"
+          onClick={toggleFavorite}
+          className={favorite ? 'text-gold-300' : 'text-pi-200/60'}
+          aria-label={favorite ? 'Hapus dari playlist favorit' : 'Tambah ke playlist favorit'}
+        >
+          {favorite ? '♥' : '♡'}
+        </button>
 
         <div className="hidden w-32 sm:block">
           <div className="h-1 rounded bg-white/10">
@@ -160,7 +188,7 @@ export default function PersistentPlayer() {
 
       {detailsOpen && (
         <div className="mx-auto mt-3 max-w-screen-xl border-t border-white/10 pt-3 text-xs text-pi-200/60">
-          Statistik play MVP tersimpan di browser. Analytics publik akan memakai database.
+          {tracks.length} lagu · {track.album} · play dihitung setelah didengarkan 10 detik.
         </div>
       )}
     </div>
