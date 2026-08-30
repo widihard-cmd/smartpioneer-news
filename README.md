@@ -2,6 +2,8 @@
 
 Portal premium ungu-gold untuk Pi Music, Levy Vision, Pi Market, dan Pi News.
 
+Website produksi: https://smartpioneer-news.netlify.app
+
 ## Menjalankan lokal
 
 ```sh

@@ -5,7 +5,7 @@ import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://smartpioneer.netlify.app', // ← ganti dengan domain Anda
+  site: 'https://smartpioneer-news.netlify.app',
 
   // Output hybrid: SSG default + SSR untuk route API
   output: 'static',
