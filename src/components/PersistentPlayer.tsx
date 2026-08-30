@@ -1,337 +1,166 @@
-/**
- * PersistentPlayer.tsx
- * Komponen React audio player yang persisten lintas navigasi halaman.
- *
- * Fitur:
- * - Play/pause/next/prev
- * - Progress bar scrubable
- * - Volume control
- * - Playlist support
- * - Minimize/expand UI
- * - Tetap hidup via `transition:persist` (Astro View Transitions)
- *
- * Dependencies: howler (npm install howler @types/howler)
- */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Howl } from 'howler';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Howl, Howler } from 'howler';
-
-// ─── Types ────────────────────────────────────────────────────
-interface Track {
+type Track = {
   id: string;
   title: string;
   artist: string;
   src: string;
-  cover?: string;
-}
+};
 
-// ─── Default Playlist ──────────────────────────────────────────
-// Ganti src dengan URL audio asli Anda di /public/audio/
-const DEFAULT_PLAYLIST: Track[] = [
+const tracks: Track[] = [
   {
-    id: '1',
-    title: 'Pi Network Official Theme',
-    artist: 'SmartPioneer Radio',
+    id: 'pioneer-voice',
+    title: 'Pioneer Voice',
+    artist: 'Pioneer Indonesia',
     src: '/audio/flow_tts.mp3',
-    cover: '/images/cover-pi.jpg',
   },
   {
-    id: '2',
-    title: 'Blockchain Beats Vol.1',
-    artist: 'SmartPioneer Radio',
+    id: 'levy-vision',
+    title: 'Levy Vision',
+    artist: 'Pioneer Indonesia',
     src: '/audio/test_aura_indo.mp3',
-    cover: '/images/cover-beats.jpg',
   },
 ];
 
-// ─── Utility ──────────────────────────────────────────────────
-function formatTime(secs: number): string {
-  if (!secs || isNaN(secs)) return '0:00';
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+const ANALYTICS_KEY = 'pioneer-play-analytics';
+
+function recordPlay(trackId: string) {
+  try {
+    const counts = JSON.parse(localStorage.getItem(ANALYTICS_KEY) || '{}');
+    counts[trackId] = (counts[trackId] || 0) + 1;
+    localStorage.setItem(ANALYTICS_KEY, JSON.stringify(counts));
+  } catch {
+    // Audio must continue even when browser storage is unavailable.
+  }
 }
 
-// ─── Component ────────────────────────────────────────────────
 export default function PersistentPlayer() {
-  const [playlist] = useState<Track[]>(DEFAULT_PLAYLIST);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [seek, setSeek] = useState(0);
-  const [volume, setVolume] = useState(0.7);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [error, setError] = useState('');
 
-  const howlRef = useRef<Howl | null>(null);
-  const rafRef = useRef<number>(0);
-  const seekBarRef = useRef<HTMLInputElement>(null);
+  const soundRef = useRef<Howl | null>(null);
+  const frameRef = useRef<number>(0);
+  const countedSoundRef = useRef<Howl | null>(null);
+  const track = tracks[index];
 
-  const currentTrack = playlist[currentIndex];
+  const updateProgress = useCallback((sound: Howl) => {
+    cancelAnimationFrame(frameRef.current);
+    const step = () => {
+      const duration = sound.duration() || 1;
+      setProgress((Number(sound.seek()) / duration) * 100);
+      if (sound.playing()) frameRef.current = requestAnimationFrame(step);
+    };
+    step();
+  }, []);
 
-  // ── Build / rebuild Howl when track changes ──────────────────
   const loadTrack = useCallback(
-    (index: number, autoPlay = false) => {
-      if (howlRef.current) {
-        howlRef.current.unload();
-        cancelAnimationFrame(rafRef.current);
-      }
+    (nextIndex: number, autoplay = false) => {
+      soundRef.current?.unload();
+      cancelAnimationFrame(frameRef.current);
+      setIndex(nextIndex);
+      setProgress(0);
+      setError('');
 
-      const track = playlist[index];
-      setIsLoading(true);
-      setSeek(0);
-      setDuration(0);
-
+      const nextTrack = tracks[nextIndex];
       const sound = new Howl({
-        src: [track.src],
-        html5: true, // streaming-friendly
-        volume,
-        onload: () => {
-          setDuration(sound.duration());
-          setIsLoading(false);
-          if (autoPlay) {
-            sound.play();
-            setIsPlaying(true);
-            startRaf(sound);
+        src: [nextTrack.src],
+        html5: true,
+        preload: true,
+        onplay: () => {
+          setPlaying(true);
+          updateProgress(sound);
+          if (countedSoundRef.current !== sound) {
+            countedSoundRef.current = sound;
+            recordPlay(nextTrack.id);
           }
         },
-        onplay: () => {
-          setIsPlaying(true);
-          startRaf(sound);
-        },
-        onpause: () => {
-          setIsPlaying(false);
-          cancelAnimationFrame(rafRef.current);
-        },
-        onstop: () => {
-          setIsPlaying(false);
-          setSeek(0);
-          cancelAnimationFrame(rafRef.current);
-        },
-        onend: () => {
-          // Auto-advance to next track
-          handleNext(index);
-        },
+        onpause: () => setPlaying(false),
+        onstop: () => setPlaying(false),
+        onend: () => loadTrack((nextIndex + 1) % tracks.length, true),
         onloaderror: () => {
-          setIsLoading(false);
-          console.warn('[SmartPioneer Player] Failed to load:', track.src);
+          setPlaying(false);
+          setError('Audio belum dapat dimuat.');
         },
       });
 
-      howlRef.current = sound;
+      soundRef.current = sound;
+      if (autoplay) sound.play();
     },
-    [playlist, volume]
+    [updateProgress],
   );
 
-  // ── RAF loop for progress ────────────────────────────────────
-  const startRaf = (sound: Howl) => {
-    const step = () => {
-      const s = sound.seek() as number;
-      setSeek(s);
-      if (sound.playing()) {
-        rafRef.current = requestAnimationFrame(step);
-      }
-    };
-    rafRef.current = requestAnimationFrame(step);
-  };
-
-  // ── Init on mount ────────────────────────────────────────────
   useEffect(() => {
-    loadTrack(0, false);
+    loadTrack(0);
     return () => {
-      howlRef.current?.unload();
-      cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(frameRef.current);
+      soundRef.current?.unload();
     };
-  }, []);
+  }, [loadTrack]);
 
-  // ── Volume sync ──────────────────────────────────────────────
-  useEffect(() => {
-    if (howlRef.current) {
-      howlRef.current.volume(isMuted ? 0 : volume);
-    }
-    Howler.volume(isMuted ? 0 : volume);
-  }, [volume, isMuted]);
-
-  // ── Controls ─────────────────────────────────────────────────
-  const handlePlayPause = () => {
-    const sound = howlRef.current;
+  const togglePlayback = () => {
+    const sound = soundRef.current;
     if (!sound) return;
-    if (sound.playing()) {
-      sound.pause();
-    } else {
-      sound.play();
-    }
+    sound.playing() ? sound.pause() : sound.play();
   };
 
-  const handleNext = (fromIndex?: number) => {
-    const idx = ((fromIndex ?? currentIndex) + 1) % playlist.length;
-    setCurrentIndex(idx);
-    loadTrack(idx, true);
+  const changeTrack = (direction: number) => {
+    const nextIndex = (index + direction + tracks.length) % tracks.length;
+    loadTrack(nextIndex, playing);
   };
 
-  const handlePrev = () => {
-    // If > 3s played, restart; else go to prev
-    if (seek > 3) {
-      howlRef.current?.seek(0);
-      setSeek(0);
-      return;
-    }
-    const idx = (currentIndex - 1 + playlist.length) % playlist.length;
-    setCurrentIndex(idx);
-    loadTrack(idx, isPlaying);
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    howlRef.current?.seek(val);
-    setSeek(val);
-  };
-
-  const handleTrackSelect = (index: number) => {
-    setCurrentIndex(index);
-    loadTrack(index, true);
-  };
-
-  // ── Progress percentage for CSS fill ─────────────────────────
-  const progressPct = duration > 0 ? (seek / duration) * 100 : 0;
-
-  // ─── UI ───────────────────────────────────────────────────────
   return (
-    <div
-      className="glass-player fixed bottom-0 left-0 right-0 z-50 transition-all duration-300"
-      style={{ height: isMinimized ? '40px' : '72px' }}
-      aria-label="Audio Player"
-      role="region"
-    >
-      {/* Minimized bar */}
-      {isMinimized ? (
+    <div className="glass-player fixed inset-x-0 bottom-0 z-50 px-4 py-3">
+      <div className="mx-auto flex max-w-screen-xl items-center gap-4">
         <button
-          onClick={() => setIsMinimized(false)}
-          className="w-full h-full flex items-center justify-center gap-3 text-xs text-pi-300/70 hover:text-gold-500 transition-colors"
+          type="button"
+          onClick={() => setDetailsOpen((value) => !value)}
+          className="hidden h-11 w-11 place-items-center rounded-xl border border-gold-500/30 bg-pi-800 sm:grid"
+          aria-label="Tampilkan informasi player"
         >
-          <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
-          {isPlaying ? '▶ ' : '⏸ '}
-          {currentTrack.title} — {currentTrack.artist}
-          <span className="ml-2 opacity-50">▲ expand</span>
+          π
         </button>
-      ) : (
-        <div className="h-full flex items-center gap-4 px-4 max-w-screen-xl mx-auto">
 
-          {/* Track info */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-lg bg-pi-800/60 border border-gold-500/20 flex items-center justify-center shrink-0 overflow-hidden">
-              {currentTrack.cover ? (
-                <img src={currentTrack.cover} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-gold-500 text-lg">♪</span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate leading-tight">
-                {currentTrack.title}
-              </p>
-              <p className="text-xs text-pi-300/60 truncate">{currentTrack.artist}</p>
-            </div>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">{track.title}</p>
+          <p className="truncate text-xs text-pi-200/50">{error || track.artist}</p>
+        </div>
 
-          {/* Controls */}
-          <div className="flex flex-col items-center gap-1.5 flex-1 max-w-md">
-            {/* Buttons */}
-            <div className="flex items-center gap-5">
-              <button
-                onClick={handlePrev}
-                className="text-pi-300/60 hover:text-gold-500 transition-colors text-lg leading-none"
-                aria-label="Sebelumnya"
-              >
-                ⏮
-              </button>
-
-              <button
-                onClick={handlePlayPause}
-                disabled={isLoading}
-                className="w-9 h-9 rounded-full bg-gold-500 hover:bg-gold-300 text-pi-900 flex items-center justify-center font-bold text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isLoading ? (
-                  <span className="animate-spin text-xs">⟳</span>
-                ) : isPlaying ? (
-                  '⏸'
-                ) : (
-                  '▶'
-                )}
-              </button>
-
-              <button
-                onClick={() => handleNext()}
-                className="text-pi-300/60 hover:text-gold-500 transition-colors text-lg leading-none"
-                aria-label="Berikutnya"
-              >
-                ⏭
-              </button>
-            </div>
-
-            {/* Progress */}
-            <div className="flex items-center gap-2 w-full">
-              <span className="text-xs text-pi-300/50 tabular-nums w-8 text-right">
-                {formatTime(seek)}
-              </span>
-              <div className="relative flex-1 h-1 group">
-                <div className="absolute inset-y-0 left-0 w-full bg-pi-800/60 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gold-500 rounded-full transition-none"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-                <input
-                  ref={seekBarRef}
-                  type="range"
-                  min="0"
-                  max={duration || 100}
-                  step="0.1"
-                  value={seek}
-                  onChange={handleSeek}
-                  className="audio-progress absolute inset-0 w-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ background: 'transparent' }}
-                  aria-label="Progress"
-                />
-              </div>
-              <span className="text-xs text-pi-300/50 tabular-nums w-8">
-                {formatTime(duration)}
-              </span>
-            </div>
-          </div>
-
-          {/* Volume + Minimize */}
-          <div className="flex items-center gap-3 flex-1 justify-end">
-            <button
-              onClick={() => setIsMuted(!isMuted)}
-              className="text-pi-300/50 hover:text-gold-500 transition-colors text-sm"
-              aria-label={isMuted ? 'Unmute' : 'Mute'}
-            >
-              {isMuted ? '🔇' : volume > 0.5 ? '🔊' : '🔉'}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={isMuted ? 0 : volume}
-              onChange={(e) => {
-                setVolume(parseFloat(e.target.value));
-                setIsMuted(false);
-              }}
-              className="audio-progress w-20 hidden sm:block"
-              aria-label="Volume"
+        <div className="hidden items-end gap-1 md:flex" aria-label="Visual equalizer">
+          {[12, 22, 16, 28, 19, 25, 14, 30, 18].map((height, barIndex) => (
+            <i
+              key={barIndex}
+              className={playing ? 'eq-bar playing' : 'eq-bar'}
+              style={{ height }}
             />
-            <button
-              onClick={() => setIsMinimized(true)}
-              className="text-pi-300/30 hover:text-pi-300/70 transition-colors text-xs ml-1"
-              aria-label="Minimize player"
-            >
-              ▼
-            </button>
+          ))}
+        </div>
+
+        <button type="button" onClick={() => changeTrack(-1)} aria-label="Lagu sebelumnya">⏮</button>
+        <button
+          type="button"
+          onClick={togglePlayback}
+          className="grid h-11 w-11 place-items-center rounded-full bg-gold-500 font-bold text-pi-950"
+          aria-label={playing ? 'Jeda' : 'Putar'}
+        >
+          {playing ? 'Ⅱ' : '▶'}
+        </button>
+        <button type="button" onClick={() => changeTrack(1)} aria-label="Lagu berikutnya">⏭</button>
+
+        <div className="hidden w-32 sm:block">
+          <div className="h-1 rounded bg-white/10">
+            <div className="h-full rounded bg-gold-500" style={{ width: `${progress}%` }} />
           </div>
+          <a href="/music" className="mt-2 block text-right text-[10px] text-gold-300">Playlist</a>
+        </div>
+      </div>
+
+      {detailsOpen && (
+        <div className="mx-auto mt-3 max-w-screen-xl border-t border-white/10 pt-3 text-xs text-pi-200/60">
+          Statistik play MVP tersimpan di browser. Analytics publik akan memakai database.
         </div>
       )}
     </div>

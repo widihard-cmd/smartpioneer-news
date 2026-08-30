@@ -17,8 +17,8 @@ interface Props {
 }
 
 const {
-  title = 'SmartPioneer — Pi Network News & Insights',
-  description = 'Platform berita dan analisis terpercaya seputar Pi Network, kripto, dan inovasi blockchain.',
+  title = 'Pioneer Indonesia — Music, Technology, Community, Vision',
+  description = 'Portal musik, kabar, pasar, dan visi untuk komunitas Pioneer Indonesia.',
   ogImage = '/og-default.jpg',
   article = false,
 } = Astro.props;
@@ -44,7 +44,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:image" content={new URL(ogImage, Astro.site)} />
-  <meta property="og:site_name" content="SmartPioneer" />
+  <meta property="og:site_name" content="Pioneer Indonesia" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
@@ -55,9 +55,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-  <!-- Sitemap -->
-  <link rel="sitemap" href="/sitemap-index.xml" />
 
   <!-- View Transitions — keeps AudioPlayer alive across navigations -->
   <ViewTransitions />
@@ -78,7 +75,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
   <!-- Footer -->
   <footer class="border-t border-gold-500/10 py-10 mt-20 text-center text-sm text-pi-300/50">
-    <p>© {new Date().getFullYear()} SmartPioneer · Built on Pi Network</p>
+    <p>© {new Date().getFullYear()} Pioneer Indonesia · Music • Technology • Community • Vision</p>
   </footer>
 
   <!--

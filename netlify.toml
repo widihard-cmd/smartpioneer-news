@@ -53,17 +53,6 @@
   to     = "/news"
   status = 301
 
-[[redirects]]
-  from   = "/artikel"
-  to     = "/news"
-  status = 301
-
-# Fallback for SPA-like 404s (Astro handles its own 404 page)
-[[redirects]]
-  from   = "/*"
-  to     = "/404"
-  status = 404
-
 # ── Netlify Functions (webhook endpoint) ───────────────────────
 # POST /api/revalidate → memicu rebuild dari webhook eksternal
 # (Contentful webhook, Zapier, Make, dll.)

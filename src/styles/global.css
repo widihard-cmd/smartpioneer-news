@@ -49,6 +49,18 @@ body {
   padding-bottom: var(--player-height);
 }
 
+.hero-shell { background: linear-gradient(135deg, rgba(82,53,184,.13), transparent 55%); }
+.orb { position:absolute; border-radius:999px; filter:blur(80px); pointer-events:none; }
+.orb-one { width:28rem; height:28rem; top:8%; right:8%; background:rgba(107,78,204,.22); }
+.orb-two { width:20rem; height:20rem; bottom:0; left:8%; background:rgba(245,197,24,.08); }
+.section-kicker { color:var(--pi-gold); font-size:.72rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; }
+.section-title { margin-top:.75rem; color:#fff; font-size:clamp(2.25rem,5vw,4.5rem); line-height:1.02; font-weight:700; letter-spacing:-.04em; }
+.eq-bar { display:block; width:3px; border-radius:4px; background:var(--pi-gold); opacity:.45; transform-origin:bottom; }
+.eq-bar.playing { animation:eq .7s ease-in-out infinite alternate; }
+.eq-bar:nth-child(2n).playing { animation-delay:-.35s; }
+.eq-bar:nth-child(3n).playing { animation-duration:.48s; }
+@keyframes eq { from{transform:scaleY(.25)} to{transform:scaleY(1)} }
+
 /* ========================================
    GLASSMORPHISM UTILITY CLASSES
    ======================================== */

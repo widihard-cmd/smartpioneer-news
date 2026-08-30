@@ -6,11 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/fetch-news.mjs || true && astro build",
+    "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
     "fetch-news": "node scripts/fetch-news.mjs",
-    "type-check": "astro check"
+    "validate": "npm run build"
   },
   "dependencies": {
     "@astrojs/netlify": "^5.5.0",
@@ -18,7 +18,7 @@
     "@astrojs/sitemap": "^3.2.0",
     "@astrojs/tailwind": "^5.1.0",
     "@contentful/rich-text-html-renderer": "^16.6.0",
-    "astro": "^4.16.0",
+    "astro": "4.16.19",
     "contentful": "^10.15.0",
     "framer-motion": "^11.14.0",
     "howler": "^2.2.4",
