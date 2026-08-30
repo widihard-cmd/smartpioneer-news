@@ -3,8 +3,10 @@ import { Howl } from 'howler';
 import { featuredTrackIndex, tracks } from '../data/tracks';
 
 const ANALYTICS_KEY = 'pioneer-play-analytics';
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-function recordPlay(trackId: string) {
+async function recordPlay(trackId: string) {
   try {
     const counts = JSON.parse(localStorage.getItem(ANALYTICS_KEY) || '{}');
     counts[trackId] = (counts[trackId] || 0) + 1;
@@ -12,6 +14,30 @@ function recordPlay(trackId: string) {
     window.dispatchEvent(new CustomEvent('pioneer:analytics-updated'));
   } catch {
     // Audio must continue even when browser storage is unavailable.
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  try {
+    let sessionId = localStorage.getItem('pioneer-session-id');
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      localStorage.setItem('pioneer-session-id', sessionId);
+    }
+    await fetch(`${SUPABASE_URL}/rest/v1/play_events`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ track_id: trackId, session_id: sessionId, listened_seconds: 10 }),
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Analytics request failed: ${response.status}`);
+    });
+  } catch (analyticsError) {
+    // Local analytics remains available if the network is temporarily offline.
+    console.warn('Pioneer play analytics unavailable', analyticsError);
   }
 }
 

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { tracks } from '../data/tracks';
 
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
 const readFavorites = () => {
   try {
     return JSON.parse(localStorage.getItem('pioneer-favorites') || '[]') as string[];
@@ -30,6 +33,22 @@ export default function MusicLibrary() {
     refresh();
     window.addEventListener('pioneer:favorites-updated', refresh);
     window.addEventListener('pioneer:analytics-updated', refresh);
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/get_track_play_counts`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: '{}',
+      })
+        .then((response) => response.ok ? response.json() : [])
+        .then((rows: Array<{ track_id: string; play_count: number }>) => {
+          if (rows.length) setCounts(Object.fromEntries(rows.map((row) => [row.track_id, Number(row.play_count)])));
+        })
+        .catch(() => undefined);
+    }
     return () => {
       window.removeEventListener('pioneer:favorites-updated', refresh);
       window.removeEventListener('pioneer:analytics-updated', refresh);
