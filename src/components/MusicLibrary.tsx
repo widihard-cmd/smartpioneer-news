@@ -5,20 +5,6 @@ const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const DOWNLOAD_PRICE_PI = 0.314;
 
-type PiPayment = { identifier: string };
-type PiSdk = {
-  init: (options: { version: '2.0'; sandbox: boolean }) => void;
-  authenticate: (scopes: string[], onIncompletePaymentFound: (payment: PiPayment) => void) => Promise<unknown>;
-  createPayment: (payment: { amount: number; memo: string; metadata: { trackId: string } }, callbacks: {
-    onReadyForServerApproval: (paymentId: string) => Promise<void>;
-    onReadyForServerCompletion: (paymentId: string, txid: string) => Promise<void>;
-    onCancel: (paymentId: string) => void;
-    onError: (error: unknown, payment?: PiPayment) => void;
-  }) => void;
-};
-
-declare global { interface Window { Pi?: PiSdk } }
-
 const readFavorites = () => {
   try {
     return JSON.parse(localStorage.getItem('pioneer-favorites') || '[]') as string[];
@@ -79,8 +65,7 @@ export default function MusicLibrary() {
       .then((result) => result.ok ? result.json() : null)
       .then((config: { enabled?: boolean; sandbox?: boolean } | null) => {
         if (!config?.enabled || !window.Pi) return;
-        window.Pi.init({ version: '2.0', sandbox: config.sandbox !== false });
-        setPaymentReady(true);
+        void window.Pi.init({ version: '2.0', sandbox: config.sandbox !== false }).then(() => setPaymentReady(true));
       })
       .catch(() => undefined);
   }, []);

@@ -64,6 +64,16 @@
   status = 200
 
 [[redirects]]
+  from   = "/api/pi-auth-config"
+  to     = "/.netlify/functions/pi-auth-config"
+  status = 200
+
+[[redirects]]
+  from   = "/api/pi-auth"
+  to     = "/.netlify/functions/pi-auth"
+  status = 200
+
+[[redirects]]
   from   = "/api/pi-payment-approve"
   to     = "/.netlify/functions/pi-payment-approve"
   status = 200
