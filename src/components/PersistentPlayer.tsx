@@ -184,7 +184,7 @@ export default function PersistentPlayer() {
         <button
           type="button"
           onClick={() => setDetailsOpen((value) => !value)}
-          className="hidden h-11 w-11 place-items-center rounded-xl border border-gold-500/30 bg-pi-800 sm:grid"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gold-500/30 bg-pi-800"
           aria-label="Tampilkan informasi player"
         >
           π
