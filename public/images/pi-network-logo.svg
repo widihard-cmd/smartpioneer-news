@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Pi Network">
+  <defs><radialGradient id="pi-bg" cx="35%" cy="25%" r="75%"><stop stop-color="#9B67E9"/><stop offset="1" stop-color="#35136A"/></radialGradient></defs>
+  <circle cx="64" cy="64" r="60" fill="url(#pi-bg)" stroke="#F6C453" stroke-width="6"/>
+  <path d="M35 40h58M49 40v48M79 40v48M38 89h52M56 53c6-7 10-7 16 0M56 68c6 7 10 7 16 0" fill="none" stroke="#F6C453" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#F6C453" stroke-width="2" opacity=".72"/>
+</svg>
