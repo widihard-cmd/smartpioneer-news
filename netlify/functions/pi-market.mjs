@@ -1,5 +1,7 @@
 const API_BASE = 'https://api.coingecko.com/api/v3';
 const COIN_ID = 'pi-network';
+const FALLBACK_ATH_IDR = 48894.09;
+const FALLBACK_ATH_DATE = '2025-02-26T00:00:00.000Z';
 
 const headers = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -29,7 +31,7 @@ export default async () => {
     const rawOhlc = ohlcResponse.ok ? await ohlcResponse.json() : [];
     const candles = Array.isArray(rawOhlc) ? rawOhlc.map(([time, open, high, low, close]) => ({ time: number(time), open: number(open), high: number(high), low: number(low), close: number(close) })).filter((candle) => Object.values(candle).every((value) => value !== null)) : [];
 
-    return new Response(JSON.stringify({ source: 'CoinGecko', symbol: 'PI', currency: 'IDR', updatedAt: number(quote.last_updated_at) ? new Date(quote.last_updated_at * 1000).toISOString() : new Date().toISOString(), price: number(quote.idr), priceUsd: number(quote.usd), change24h: number(quote.idr_24h_change), marketCap: number(quote.idr_market_cap), volume24h: number(quote.idr_24h_vol), athIdr: number(marketData?.ath?.idr), athDate: marketData?.ath_date?.idr || null, candles }), { status: 200, headers });
+    return new Response(JSON.stringify({ source: 'CoinGecko', symbol: 'PI', currency: 'IDR', updatedAt: number(quote.last_updated_at) ? new Date(quote.last_updated_at * 1000).toISOString() : new Date().toISOString(), price: number(quote.idr), priceUsd: number(quote.usd), change24h: number(quote.idr_24h_change), marketCap: number(quote.idr_market_cap), volume24h: number(quote.idr_24h_vol), athIdr: number(marketData?.ath?.idr) ?? FALLBACK_ATH_IDR, athDate: marketData?.ath_date?.idr || FALLBACK_ATH_DATE, candles }), { status: 200, headers });
   } catch {
     return new Response(JSON.stringify({ error: 'Data Pi Market sementara belum tersedia. Silakan coba lagi beberapa saat.', source: 'CoinGecko' }), { status: 503, headers });
   }
