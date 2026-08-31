@@ -52,6 +52,7 @@ export default function PersistentPlayer() {
   const [volume, setVolume] = useState(0.8);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
   const [queueLabel, setQueueLabel] = useState('Seluruh koleksi');
+  const [queueSize, setQueueSize] = useState(tracks.length);
 
   const soundRef = useRef<Howl | null>(null);
   const frameRef = useRef<number>(0);
@@ -138,9 +139,11 @@ export default function PersistentPlayer() {
       if (nextQueue?.length) {
         queueRef.current = nextQueue;
         setQueueLabel('Playlist saya');
+        setQueueSize(nextQueue.length);
       } else {
         queueRef.current = tracks.map((item) => item.id);
         setQueueLabel('Seluruh koleksi');
+        setQueueSize(tracks.length);
       }
       const nextIndex = tracks.findIndex((item) => item.id === id);
       if (nextIndex >= 0) loadTrack(nextIndex, true);
@@ -260,7 +263,7 @@ export default function PersistentPlayer() {
 
       {detailsOpen && (
         <div className="mx-auto mt-3 max-w-screen-xl border-t border-white/10 pt-3 text-xs text-pi-200/60">
-          <div className="flex flex-wrap items-center justify-between gap-3"><span>{queueLabel} · {tracks.length} lagu · play dihitung setelah didengarkan 10 detik.</span><label className="flex items-center gap-2">Volume <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} className="w-28 accent-gold-500" aria-label="Volume" /></label></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><span>{queueLabel} · {queueSize} lagu · play dihitung setelah didengarkan 10 detik.</span><label className="flex items-center gap-2">Volume <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} className="w-28 accent-gold-500" aria-label="Volume" /></label></div>
         </div>
       )}
     </div>
