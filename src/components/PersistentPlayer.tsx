@@ -5,6 +5,7 @@ import { featuredTrackIndex, tracks } from '../data/tracks';
 const ANALYTICS_KEY = 'pioneer-play-analytics';
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+type RepeatMode = 'all' | 'one' | 'off';
 
 async function recordPlay(trackId: string) {
   try {
@@ -48,11 +49,15 @@ export default function PersistentPlayer() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [error, setError] = useState('');
   const [favorite, setFavorite] = useState(false);
+  const [volume, setVolume] = useState(0.8);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
 
   const soundRef = useRef<Howl | null>(null);
   const frameRef = useRef<number>(0);
   const playTimerRef = useRef<number>(0);
   const countedSoundRef = useRef<Howl | null>(null);
+  const repeatModeRef = useRef<RepeatMode>('all');
+  const volumeRef = useRef(0.8);
   const track = tracks[index];
 
   const updateProgress = useCallback((sound: Howl) => {
@@ -79,6 +84,7 @@ export default function PersistentPlayer() {
         src: [nextTrack.src],
         html5: true,
         preload: true,
+        volume: volumeRef.current,
         onplay: () => {
           setPlaying(true);
           updateProgress(sound);
@@ -92,7 +98,10 @@ export default function PersistentPlayer() {
           if (Number(sound.seek()) < 10) window.clearTimeout(playTimerRef.current);
         },
         onstop: () => setPlaying(false),
-        onend: () => loadTrack((nextIndex + 1) % tracks.length, true),
+        onend: () => {
+          if (repeatModeRef.current === 'one') { sound.play(); return; }
+          if (repeatModeRef.current === 'all') loadTrack((nextIndex + 1) % tracks.length, true);
+        },
         onloaderror: () => {
           setPlaying(false);
           setError('Audio belum dapat dimuat.');
@@ -133,6 +142,8 @@ export default function PersistentPlayer() {
     }
   }, [track.id]);
 
+  useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
+
   const togglePlayback = () => {
     const sound = soundRef.current;
     if (!sound) return;
@@ -143,6 +154,15 @@ export default function PersistentPlayer() {
     const nextIndex = (index + direction + tracks.length) % tracks.length;
     loadTrack(nextIndex, playing);
   };
+
+  const changeVolume = (nextVolume: number) => {
+    volumeRef.current = nextVolume;
+    setVolume(nextVolume);
+    soundRef.current?.volume(nextVolume);
+    try { localStorage.setItem('pioneer-volume', String(nextVolume)); } catch { /* optional preference */ }
+  };
+
+  const cycleRepeat = () => setRepeatMode((mode) => mode === 'all' ? 'one' : mode === 'one' ? 'off' : 'all');
 
   const toggleFavorite = () => {
     try {
@@ -195,6 +215,9 @@ export default function PersistentPlayer() {
           {playing ? 'Ⅱ' : '▶'}
         </button>
         <button type="button" onClick={() => changeTrack(1)} aria-label="Lagu berikutnya">⏭</button>
+        <button type="button" onClick={cycleRepeat} className={repeatMode === 'off' ? 'text-pi-200/40' : 'text-gold-300'} aria-label={repeatMode === 'one' ? 'Ulang lagu ini aktif' : repeatMode === 'all' ? 'Ulang playlist aktif' : 'Ulang mati'}>
+          {repeatMode === 'one' ? '↻¹' : '↻'}
+        </button>
         <button
           type="button"
           onClick={toggleFavorite}
@@ -210,11 +233,16 @@ export default function PersistentPlayer() {
           </div>
           <a href="/music" className="mt-2 block text-right text-[10px] text-gold-300">Playlist</a>
         </div>
+
+        <label className="hidden items-center gap-2 lg:flex" title={`Volume ${Math.round(volume * 100)}%`}>
+          <span className="text-sm text-pi-200/65">{volume === 0 ? '🔇' : '🔊'}</span>
+          <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} className="h-1 w-20 accent-gold-500" aria-label="Volume" />
+        </label>
       </div>
 
       {detailsOpen && (
         <div className="mx-auto mt-3 max-w-screen-xl border-t border-white/10 pt-3 text-xs text-pi-200/60">
-          {tracks.length} lagu · {track.album} · play dihitung setelah didengarkan 10 detik.
+          <div className="flex flex-wrap items-center justify-between gap-3"><span>{tracks.length} lagu · {track.album} · play dihitung setelah didengarkan 10 detik.</span><label className="flex items-center gap-2">Volume <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} className="w-28 accent-gold-500" aria-label="Volume" /></label></div>
         </div>
       )}
     </div>

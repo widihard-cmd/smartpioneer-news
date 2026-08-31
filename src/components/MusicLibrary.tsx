@@ -24,6 +24,7 @@ export default function MusicLibrary() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     const refresh = () => {
@@ -55,10 +56,13 @@ export default function MusicLibrary() {
     };
   }, []);
 
-  const visibleTracks = useMemo(
-    () => (favoritesOnly ? tracks.filter((track) => favorites.includes(track.id)) : tracks),
-    [favorites, favoritesOnly],
-  );
+  const visibleTracks = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase('id-ID');
+    return tracks
+      .filter((track) => !favoritesOnly || favorites.includes(track.id))
+      .filter((track) => !needle || `${track.title} ${track.artist} ${track.album}`.toLocaleLowerCase('id-ID').includes(needle))
+      .sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0) || a.title.localeCompare(b.title, 'id-ID'));
+  }, [counts, favorites, favoritesOnly, query]);
 
   const toggleFavorite = (id: string) => {
     const next = favorites.includes(id) ? favorites.filter((item) => item !== id) : [...favorites, id];
@@ -72,7 +76,7 @@ export default function MusicLibrary() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="section-kicker">SmartPioneer Music</p>
-          <h2 className="mt-2 text-2xl font-semibold text-white">12 lagu pilihan</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-white">{tracks.length} lagu · diurutkan dari paling banyak diputar</h2>
         </div>
         <button
           type="button"
@@ -81,6 +85,15 @@ export default function MusicLibrary() {
         >
           {favoritesOnly ? 'Tampilkan semua' : `Playlist saya (${favorites.length})`}
         </button>
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <label className="relative min-w-[min(100%,20rem)] flex-1">
+          <span className="sr-only">Cari lagu</span>
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gold-300">⌕</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari judul lagu atau artis…" className="w-full rounded-xl border border-white/10 bg-white/[.045] py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-pi-200/35 focus:border-gold-500/60" />
+        </label>
+        <span className="rounded-full border border-white/10 px-3 py-2 text-xs text-pi-200/55">{visibleTracks.length} lagu</span>
       </div>
 
       <div className="grid gap-3">
@@ -94,7 +107,7 @@ export default function MusicLibrary() {
             >
               ▶
             </button>
-            <p className="hidden w-7 text-center text-xs text-pi-200/40 sm:block">{String(index + 1).padStart(2, '0')}</p>
+            <p className="hidden w-7 text-center text-xs font-semibold text-gold-300/75 sm:block">#{String(index + 1).padStart(2, '0')}</p>
             <div className="min-w-0 flex-1">
               <h3 className="truncate font-semibold text-white">{track.title}</h3>
               <p className="truncate text-sm text-pi-200/50">{track.artist} · {track.album}</p>
@@ -113,7 +126,7 @@ export default function MusicLibrary() {
           </article>
         ))}
         {visibleTracks.length === 0 && (
-          <div className="glass-card p-8 text-center text-pi-200/55">Belum ada lagu di playlist. Tekan ♡ pada lagu yang disukai.</div>
+          <div className="glass-card p-8 text-center text-pi-200/55">{query ? 'Lagu tidak ditemukan. Coba kata kunci lain.' : 'Belum ada lagu di playlist. Tekan ♡ pada lagu yang disukai.'}</div>
         )}
       </div>
     </section>
