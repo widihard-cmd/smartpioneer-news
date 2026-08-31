@@ -58,6 +58,11 @@
   to     = "/.netlify/functions/pi-market"
   status = 200
 
+[[redirects]]
+  from   = "/marketplace"
+  to     = "/"
+  status = 302
+
 # ── Netlify Functions (webhook endpoint) ───────────────────────
 # POST /api/revalidate → memicu rebuild dari webhook eksternal
 # (Contentful webhook, Zapier, Make, dll.)
