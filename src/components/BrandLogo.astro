@@ -1,0 +1,30 @@
+---
+interface Props {
+  compact?: boolean;
+  class?: string;
+}
+
+const { compact = false, class: className = '' } = Astro.props;
+---
+
+<span class:list={['inline-flex items-center gap-3', className]} aria-label="Pioneer Indonesia">
+  <svg class="h-10 w-10 shrink-0" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="pi-gold" x1="8" y1="5" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFE6A0" />
+        <stop offset=".48" stop-color="#DFAE45" />
+        <stop offset="1" stop-color="#8B5717" />
+      </linearGradient>
+      <linearGradient id="pi-violet" x1="10" y1="7" x2="54" y2="59" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#4C278B" />
+        <stop offset="1" stop-color="#16092F" />
+      </linearGradient>
+    </defs>
+    <circle cx="32" cy="32" r="29" fill="url(#pi-violet)" stroke="url(#pi-gold)" stroke-width="2" />
+    <path d="M19 46V18h12.7c7.1 0 11.3 3.7 11.3 9.7 0 6.1-4.3 9.8-11.3 9.8h-6.1V46H19Zm6.6-14h5.3c3.5 0 5.4-1.5 5.4-4.3 0-2.7-1.9-4.2-5.4-4.2h-5.3V32Z" fill="url(#pi-gold)" />
+    <path d="M46 14v27.8L39.7 48l-1.8-1.8 3.5-3.4V14H46Z" fill="url(#pi-gold)" />
+    <path d="m41.4 42.4 4.6 4.6 4.6-4.6" stroke="url(#pi-gold)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="49" cy="14" r="2.2" fill="#FFE6A0" />
+  </svg>
+  {!compact && <span class="leading-none"><span class="block font-serif text-[.75rem] font-semibold tracking-[.26em] text-white">PIONEER</span><span class="mt-1 block text-[.57rem] font-bold tracking-[.38em] text-gold-300">INDONESIA</span></span>}
+</span>
