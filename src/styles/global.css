@@ -35,6 +35,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 body {
@@ -45,9 +46,12 @@ body {
   color: #E8E4FF;
   font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
   /* Reserve bottom padding for persistent audio player */
   padding-bottom: var(--player-height);
 }
+
+main { overflow-x: clip; }
 
 .hero-shell { background: linear-gradient(135deg, rgba(82,53,184,.13), transparent 55%); }
 .orb { position:absolute; border-radius:999px; filter:blur(80px); pointer-events:none; }

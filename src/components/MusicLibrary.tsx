@@ -27,6 +27,7 @@ export default function MusicLibrary() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [paymentReady, setPaymentReady] = useState(false);
+  const [paymentUnavailableReason, setPaymentUnavailableReason] = useState('');
   const [paymentMessage, setPaymentMessage] = useState('');
   const [buyingTrackId, setBuyingTrackId] = useState<string | null>(null);
 
@@ -64,10 +65,19 @@ export default function MusicLibrary() {
     fetch('/api/pi-payment-config')
       .then((result) => result.ok ? result.json() : null)
       .then((config: { enabled?: boolean; sandbox?: boolean } | null) => {
-        if (!config?.enabled || !window.Pi) return;
-        void window.Pi.init({ version: '2.0', sandbox: config.sandbox !== false }).then(() => setPaymentReady(true));
+        if (!config?.enabled) {
+          setPaymentUnavailableReason('Pembayaran belum diaktifkan: PI_API_KEY belum tersimpan di Cloudflare.');
+          return;
+        }
+        if (!window.Pi) {
+          setPaymentUnavailableReason('Buka melalui Pi Browser untuk membayar dengan Pi.');
+          return;
+        }
+        void window.Pi.init({ version: '2.0', sandbox: config.sandbox !== false })
+          .then(() => setPaymentReady(true))
+          .catch(() => setPaymentUnavailableReason('Pi Wallet belum dapat dihubungkan. Coba buka ulang melalui Pi Browser.'));
       })
-      .catch(() => undefined);
+      .catch(() => setPaymentUnavailableReason('Konfigurasi pembayaran belum tersedia.'));
   }, []);
 
   const visibleTracks = useMemo(() => {
@@ -103,7 +113,7 @@ export default function MusicLibrary() {
 
   const buyDownload = async (track: typeof tracks[number]) => {
     if (!paymentReady || !window.Pi) {
-      setPaymentMessage('Buka halaman ini melalui Pi Browser untuk melakukan pembayaran Pi.');
+      setPaymentMessage(paymentUnavailableReason || 'Buka halaman ini melalui Pi Browser untuk melakukan pembayaran Pi.');
       return;
     }
     setPaymentMessage('Menyiapkan pembayaran Pi…');
@@ -172,12 +182,12 @@ export default function MusicLibrary() {
 
       <div className="mb-5 rounded-xl border border-gold-500/20 bg-gold-500/[.06] px-4 py-3 text-xs leading-5 text-pi-100/75">
         <span className="font-semibold text-gold-300">Unduh koleksi:</span> {DOWNLOAD_PRICE_PI.toFixed(3)} Pi per lagu · pembayaran tersedia melalui Pi Browser.
-        {paymentMessage && <span className="ml-2 text-gold-200">{paymentMessage}</span>}
+        {(paymentMessage || paymentUnavailableReason) && <span className="ml-2 text-gold-200">{paymentMessage || paymentUnavailableReason}</span>}
       </div>
 
       <div className="grid gap-3">
         {visibleTracks.map((track, index) => (
-          <article key={track.id} className="glass-card flex items-center gap-4 p-4 sm:p-5">
+          <article key={track.id} className="glass-card flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap sm:gap-4 sm:p-5">
             <button
               type="button"
               onClick={() => playTrack(track.id)}
@@ -187,7 +197,7 @@ export default function MusicLibrary() {
               ▶
             </button>
             <p className="hidden w-7 text-center text-xs font-semibold text-gold-300/75 sm:block">#{String(index + 1).padStart(2, '0')}</p>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-[calc(100%-4rem)] sm:basis-auto">
               <h3 className="truncate font-semibold text-white">{track.title}</h3>
               <p className="truncate text-sm text-pi-200/50">{track.artist} · {track.album}</p>
             </div>
@@ -198,7 +208,7 @@ export default function MusicLibrary() {
               type="button"
               onClick={() => buyDownload(track)}
               disabled={buyingTrackId === track.id}
-              className="rounded-full border border-gold-500/35 px-3 py-1.5 text-[11px] font-semibold text-gold-300 transition hover:bg-gold-500 hover:text-pi-950 disabled:cursor-wait disabled:opacity-60"
+              className="order-last ml-14 rounded-full border border-gold-500/35 px-3 py-1.5 text-[11px] font-semibold text-gold-300 transition hover:bg-gold-500 hover:text-pi-950 disabled:cursor-wait disabled:opacity-60 sm:order-none sm:ml-0"
               aria-label={`Beli dan unduh ${track.title} seharga ${DOWNLOAD_PRICE_PI} Pi`}
             >
               {buyingTrackId === track.id ? 'Memproses…' : '⇩ 0,314 Pi'}

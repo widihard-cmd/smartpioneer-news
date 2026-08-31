@@ -8,6 +8,7 @@ dist-check-payment/
 dist-check-auth/
 dist-check-cloudflare/
 dist-check-cloudflare-canonical/
+dist-check-mobile/
 # generated types
 .astro/
 
