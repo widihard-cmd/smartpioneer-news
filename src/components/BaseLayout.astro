@@ -62,6 +62,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <!-- Preload critical font -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Pi SDK hanya dipakai saat pengunjung memilih bayar lewat Pi Browser. -->
+  <script is:inline src="https://sdk.minepi.com/pi-sdk.js"></script>
 </head>
 
 <body>

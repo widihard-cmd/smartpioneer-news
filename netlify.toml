@@ -59,6 +59,21 @@
   status = 200
 
 [[redirects]]
+  from   = "/api/pi-payment-config"
+  to     = "/.netlify/functions/pi-payment-config"
+  status = 200
+
+[[redirects]]
+  from   = "/api/pi-payment-approve"
+  to     = "/.netlify/functions/pi-payment-approve"
+  status = 200
+
+[[redirects]]
+  from   = "/api/pi-payment-complete"
+  to     = "/.netlify/functions/pi-payment-complete"
+  status = 200
+
+[[redirects]]
   from   = "/marketplace"
   to     = "/"
   status = 302

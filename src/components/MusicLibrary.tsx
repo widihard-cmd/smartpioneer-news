@@ -3,6 +3,21 @@ import { tracks } from '../data/tracks';
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const DOWNLOAD_PRICE_PI = 0.314;
+
+type PiPayment = { identifier: string };
+type PiSdk = {
+  init: (options: { version: '2.0'; sandbox: boolean }) => void;
+  authenticate: (scopes: string[], onIncompletePaymentFound: (payment: PiPayment) => void) => Promise<unknown>;
+  createPayment: (payment: { amount: number; memo: string; metadata: { trackId: string } }, callbacks: {
+    onReadyForServerApproval: (paymentId: string) => Promise<void>;
+    onReadyForServerCompletion: (paymentId: string, txid: string) => Promise<void>;
+    onCancel: (paymentId: string) => void;
+    onError: (error: unknown, payment?: PiPayment) => void;
+  }) => void;
+};
+
+declare global { interface Window { Pi?: PiSdk } }
 
 const readFavorites = () => {
   try {
@@ -25,6 +40,9 @@ export default function MusicLibrary() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [query, setQuery] = useState('');
+  const [paymentReady, setPaymentReady] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState('');
+  const [buyingTrackId, setBuyingTrackId] = useState<string | null>(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -56,6 +74,17 @@ export default function MusicLibrary() {
     };
   }, []);
 
+  useEffect(() => {
+    fetch('/api/pi-payment-config')
+      .then((result) => result.ok ? result.json() : null)
+      .then((config: { enabled?: boolean; sandbox?: boolean } | null) => {
+        if (!config?.enabled || !window.Pi) return;
+        window.Pi.init({ version: '2.0', sandbox: config.sandbox !== false });
+        setPaymentReady(true);
+      })
+      .catch(() => undefined);
+  }, []);
+
   const visibleTracks = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('id-ID');
     return tracks
@@ -79,6 +108,55 @@ export default function MusicLibrary() {
   const playFavorites = () => {
     const queueIds = tracks.filter((track) => favorites.includes(track.id)).map((track) => track.id);
     if (queueIds.length) window.dispatchEvent(new CustomEvent('pioneer:play-track', { detail: { id: queueIds[0], queueIds } }));
+  };
+
+  const postPayment = async (endpoint: string, body: Record<string, string>) => {
+    const result = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const payload = await result.json().catch(() => ({}));
+    if (!result.ok) throw new Error(payload.error || 'Pembayaran belum dapat diproses.');
+  };
+
+  const buyDownload = async (track: typeof tracks[number]) => {
+    if (!paymentReady || !window.Pi) {
+      setPaymentMessage('Buka halaman ini melalui Pi Browser untuk melakukan pembayaran Pi.');
+      return;
+    }
+    setPaymentMessage('Menyiapkan pembayaran Pi…');
+    setBuyingTrackId(track.id);
+    try {
+      await window.Pi.authenticate(['payments'], () => undefined);
+      window.Pi.createPayment(
+        { amount: DOWNLOAD_PRICE_PI, memo: `Unduh ${track.title} — SmartPioneer Music`, metadata: { trackId: track.id } },
+        {
+          onReadyForServerApproval: async (paymentId) => {
+            await postPayment('/api/pi-payment-approve', { paymentId, trackId: track.id });
+            setPaymentMessage('Pembayaran disetujui. Selesaikan konfirmasi di Pi Browser.');
+          },
+          onReadyForServerCompletion: async (paymentId, txid) => {
+            await postPayment('/api/pi-payment-complete', { paymentId, txid, trackId: track.id });
+            setPaymentMessage(`Pembayaran berhasil. Unduhan ${track.title} siap.`);
+            const link = document.createElement('a');
+            link.href = track.src;
+            link.download = `${track.title}.mp3`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setBuyingTrackId(null);
+          },
+          onCancel: () => {
+            setPaymentMessage('Pembayaran dibatalkan.');
+            setBuyingTrackId(null);
+          },
+          onError: () => {
+            setPaymentMessage('Pembayaran belum berhasil. Silakan coba lagi.');
+            setBuyingTrackId(null);
+          },
+        },
+      );
+    } catch (error) {
+      setPaymentMessage(error instanceof Error ? error.message : 'Pembayaran belum dapat dimulai.');
+      setBuyingTrackId(null);
+    }
   };
 
   return (
@@ -107,6 +185,11 @@ export default function MusicLibrary() {
         {favoritesOnly && favorites.length > 0 && <button type="button" onClick={playFavorites} className="rounded-full bg-gold-500 px-4 py-2 text-xs font-bold text-pi-950">▶ Putar playlist</button>}
       </div>
 
+      <div className="mb-5 rounded-xl border border-gold-500/20 bg-gold-500/[.06] px-4 py-3 text-xs leading-5 text-pi-100/75">
+        <span className="font-semibold text-gold-300">Unduh koleksi:</span> {DOWNLOAD_PRICE_PI.toFixed(3)} Pi per lagu · pembayaran tersedia melalui Pi Browser.
+        {paymentMessage && <span className="ml-2 text-gold-200">{paymentMessage}</span>}
+      </div>
+
       <div className="grid gap-3">
         {visibleTracks.map((track, index) => (
           <article key={track.id} className="glass-card flex items-center gap-4 p-4 sm:p-5">
@@ -126,6 +209,15 @@ export default function MusicLibrary() {
             {track.featured && <span className="pi-badge hidden md:inline-flex">Featured</span>}
             <p className="hidden text-xs text-pi-200/45 sm:block">{counts[track.id] || 0} play</p>
             <p className="w-10 text-right text-xs text-pi-200/45">{track.duration}</p>
+            <button
+              type="button"
+              onClick={() => buyDownload(track)}
+              disabled={buyingTrackId === track.id}
+              className="rounded-full border border-gold-500/35 px-3 py-1.5 text-[11px] font-semibold text-gold-300 transition hover:bg-gold-500 hover:text-pi-950 disabled:cursor-wait disabled:opacity-60"
+              aria-label={`Beli dan unduh ${track.title} seharga ${DOWNLOAD_PRICE_PI} Pi`}
+            >
+              {buyingTrackId === track.id ? 'Memproses…' : '⇩ 0,314 Pi'}
+            </button>
             <button
               type="button"
               onClick={() => toggleFavorite(track.id)}
