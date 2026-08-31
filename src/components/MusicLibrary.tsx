@@ -71,6 +71,16 @@ export default function MusicLibrary() {
     window.dispatchEvent(new CustomEvent('pioneer:favorites-updated'));
   };
 
+  const playTrack = (id: string) => {
+    const queueIds = favoritesOnly ? tracks.filter((track) => favorites.includes(track.id)).map((track) => track.id) : undefined;
+    window.dispatchEvent(new CustomEvent('pioneer:play-track', { detail: { id, queueIds } }));
+  };
+
+  const playFavorites = () => {
+    const queueIds = tracks.filter((track) => favorites.includes(track.id)).map((track) => track.id);
+    if (queueIds.length) window.dispatchEvent(new CustomEvent('pioneer:play-track', { detail: { id: queueIds[0], queueIds } }));
+  };
+
   return (
     <section className="mt-12">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -94,6 +104,7 @@ export default function MusicLibrary() {
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari judul lagu atau artis…" className="w-full rounded-xl border border-white/10 bg-white/[.045] py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-pi-200/35 focus:border-gold-500/60" />
         </label>
         <span className="rounded-full border border-white/10 px-3 py-2 text-xs text-pi-200/55">{visibleTracks.length} lagu</span>
+        {favoritesOnly && favorites.length > 0 && <button type="button" onClick={playFavorites} className="rounded-full bg-gold-500 px-4 py-2 text-xs font-bold text-pi-950">▶ Putar playlist</button>}
       </div>
 
       <div className="grid gap-3">
@@ -101,7 +112,7 @@ export default function MusicLibrary() {
           <article key={track.id} className="glass-card flex items-center gap-4 p-4 sm:p-5">
             <button
               type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('pioneer:play-track', { detail: { id: track.id } }))}
+              onClick={() => playTrack(track.id)}
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gold-500 font-bold text-pi-950"
               aria-label={`Putar ${track.title}`}
             >

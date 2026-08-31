@@ -2,6 +2,7 @@
 dist/
 dist-check/
 dist-check-music/
+dist-check-playlist/
 # generated types
 .astro/
 

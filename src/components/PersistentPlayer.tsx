@@ -51,6 +51,7 @@ export default function PersistentPlayer() {
   const [favorite, setFavorite] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
+  const [queueLabel, setQueueLabel] = useState('Seluruh koleksi');
 
   const soundRef = useRef<Howl | null>(null);
   const frameRef = useRef<number>(0);
@@ -58,6 +59,7 @@ export default function PersistentPlayer() {
   const countedSoundRef = useRef<Howl | null>(null);
   const repeatModeRef = useRef<RepeatMode>('all');
   const volumeRef = useRef(0.8);
+  const queueRef = useRef<string[]>(tracks.map((item) => item.id));
   const track = tracks[index];
 
   const updateProgress = useCallback((sound: Howl) => {
@@ -100,7 +102,12 @@ export default function PersistentPlayer() {
         onstop: () => setPlaying(false),
         onend: () => {
           if (repeatModeRef.current === 'one') { sound.play(); return; }
-          if (repeatModeRef.current === 'all') loadTrack((nextIndex + 1) % tracks.length, true);
+          if (repeatModeRef.current === 'all') {
+            const currentQueueIndex = queueRef.current.indexOf(nextTrack.id);
+            const followingId = queueRef.current[(currentQueueIndex + 1) % queueRef.current.length];
+            const followingIndex = tracks.findIndex((item) => item.id === followingId);
+            if (followingIndex >= 0) loadTrack(followingIndex, true);
+          }
         },
         onloaderror: () => {
           setPlaying(false);
@@ -125,7 +132,16 @@ export default function PersistentPlayer() {
 
   useEffect(() => {
     const selectTrack = (event: Event) => {
-      const id = (event as CustomEvent<{ id: string }>).detail?.id;
+      const detail = (event as CustomEvent<{ id: string; queueIds?: string[] }>).detail;
+      const id = detail?.id;
+      const nextQueue = detail?.queueIds?.filter((queueId) => tracks.some((trackItem) => trackItem.id === queueId));
+      if (nextQueue?.length) {
+        queueRef.current = nextQueue;
+        setQueueLabel('Playlist saya');
+      } else {
+        queueRef.current = tracks.map((item) => item.id);
+        setQueueLabel('Seluruh koleksi');
+      }
       const nextIndex = tracks.findIndex((item) => item.id === id);
       if (nextIndex >= 0) loadTrack(nextIndex, true);
     };
@@ -151,7 +167,9 @@ export default function PersistentPlayer() {
   };
 
   const changeTrack = (direction: number) => {
-    const nextIndex = (index + direction + tracks.length) % tracks.length;
+    const currentQueueIndex = queueRef.current.indexOf(track.id);
+    const nextId = queueRef.current[(currentQueueIndex + direction + queueRef.current.length) % queueRef.current.length];
+    const nextIndex = tracks.findIndex((item) => item.id === nextId);
     loadTrack(nextIndex, playing);
   };
 
@@ -242,7 +260,7 @@ export default function PersistentPlayer() {
 
       {detailsOpen && (
         <div className="mx-auto mt-3 max-w-screen-xl border-t border-white/10 pt-3 text-xs text-pi-200/60">
-          <div className="flex flex-wrap items-center justify-between gap-3"><span>{tracks.length} lagu · {track.album} · play dihitung setelah didengarkan 10 detik.</span><label className="flex items-center gap-2">Volume <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} className="w-28 accent-gold-500" aria-label="Volume" /></label></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><span>{queueLabel} · {tracks.length} lagu · play dihitung setelah didengarkan 10 detik.</span><label className="flex items-center gap-2">Volume <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} className="w-28 accent-gold-500" aria-label="Volume" /></label></div>
         </div>
       )}
     </div>
