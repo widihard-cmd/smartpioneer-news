@@ -40,16 +40,23 @@ export async function piRequest(path, options = {}) {
     },
   });
 
-  if (!result.ok) throw new Error(`Pi API merespons ${result.status}.`);
+  if (!result.ok) {
+    const details = await result.json().catch(() => null);
+    const message = details?.message || details?.error_message || details?.error || details?.code;
+    throw new Error(message ? `Pi API: ${message}` : `Pi API merespons ${result.status}.`);
+  }
   return result.status === 204 ? null : result.json();
 }
 
-export async function verifyPurchase(body) {
-  const payment = await piRequest(`/payments/${encodeURIComponent(body.paymentId)}`);
+export function assertPurchase(payment, body) {
   const amount = Number(payment?.amount);
   const trackId = payment?.metadata?.trackId;
   if (Math.abs(amount - PRICE_PI) > 0.000001 || trackId !== body.trackId) {
     throw new Error('Detail pembayaran tidak sesuai dengan lagu yang dipilih.');
   }
   return payment;
+}
+
+export async function verifyPurchase(body) {
+  return assertPurchase(await piRequest(`/payments/${encodeURIComponent(body.paymentId)}`), body);
 }

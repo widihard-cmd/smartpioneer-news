@@ -19,14 +19,21 @@ export async function piRequest(path, env, options = {}) {
     ...options,
     headers: { Authorization: `Key ${env.PI_API_KEY}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
-  if (!result.ok) throw new Error(`Pi API merespons ${result.status}.`);
+  if (!result.ok) {
+    const details = await result.json().catch(() => null);
+    const message = details?.message || details?.error_message || details?.error || details?.code;
+    throw new Error(message ? `Pi API: ${message}` : `Pi API merespons ${result.status}.`);
+  }
   return result.status === 204 ? null : result.json();
 }
 
-export async function verifyPurchase(body, env) {
-  const payment = await piRequest(`/payments/${encodeURIComponent(body.paymentId)}`, env);
+export function assertPurchase(payment, body) {
   if (Math.abs(Number(payment?.amount) - PRICE_PI) > 0.000001 || payment?.metadata?.trackId !== body.trackId) {
     throw new Error('Detail pembayaran tidak sesuai dengan lagu yang dipilih.');
   }
   return payment;
+}
+
+export async function verifyPurchase(body, env) {
+  return assertPurchase(await piRequest(`/payments/${encodeURIComponent(body.paymentId)}`, env), body);
 }

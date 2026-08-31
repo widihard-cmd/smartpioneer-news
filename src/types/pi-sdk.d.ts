@@ -10,6 +10,16 @@ interface PiAuthResult {
 
 interface PiPayment {
   identifier: string;
+  amount?: number;
+  metadata?: { trackId?: string };
+  transaction?: { txid: string; verified?: boolean } | null;
+  status?: {
+    developer_approved?: boolean;
+    transaction_verified?: boolean;
+    developer_completed?: boolean;
+    cancelled?: boolean;
+    user_cancelled?: boolean;
+  };
 }
 
 interface PiSdk {

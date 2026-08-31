@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { tracks } from '../data/tracks';
+import { postPayment, resolveIncompletePiPayment } from '../lib/pi-payments';
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -105,12 +106,6 @@ export default function MusicLibrary() {
     if (queueIds.length) window.dispatchEvent(new CustomEvent('pioneer:play-track', { detail: { id: queueIds[0], queueIds } }));
   };
 
-  const postPayment = async (endpoint: string, body: Record<string, string>) => {
-    const result = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const payload = await result.json().catch(() => ({}));
-    if (!result.ok) throw new Error(payload.error || 'Pembayaran belum dapat diproses.');
-  };
-
   const buyDownload = async (track: typeof tracks[number]) => {
     if (!paymentReady || !window.Pi) {
       setPaymentMessage(paymentUnavailableReason || 'Buka halaman ini melalui Pi Browser untuk melakukan pembayaran Pi.');
@@ -119,31 +114,46 @@ export default function MusicLibrary() {
     setPaymentMessage('Menyiapkan pembayaran Pi…');
     setBuyingTrackId(track.id);
     try {
-      await window.Pi.authenticate(['payments'], () => undefined);
+      await window.Pi.authenticate(['payments'], (payment) => {
+        void resolveIncompletePiPayment(payment, setPaymentMessage).catch((error) => {
+          setPaymentMessage(error instanceof Error ? error.message : 'Pembayaran sebelumnya belum dapat dipulihkan.');
+        });
+      });
       window.Pi.createPayment(
         { amount: DOWNLOAD_PRICE_PI, memo: `Unduh ${track.title} — SmartPioneer Music`, metadata: { trackId: track.id } },
         {
           onReadyForServerApproval: async (paymentId) => {
-            await postPayment('/api/pi-payment-approve', { paymentId, trackId: track.id });
-            setPaymentMessage('Pembayaran disetujui. Selesaikan konfirmasi di Pi Browser.');
+            try {
+              await postPayment('/api/pi-payment-approve', { paymentId, trackId: track.id });
+              setPaymentMessage('Pembayaran disetujui. Selesaikan konfirmasi di Pi Browser.');
+            } catch (error) {
+              setPaymentMessage(error instanceof Error ? error.message : 'Persetujuan pembayaran gagal.');
+            }
           },
           onReadyForServerCompletion: async (paymentId, txid) => {
-            await postPayment('/api/pi-payment-complete', { paymentId, txid, trackId: track.id });
-            setPaymentMessage(`Pembayaran berhasil. Unduhan ${track.title} siap.`);
-            const link = document.createElement('a');
-            link.href = track.src;
-            link.download = `${track.title}.mp3`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setBuyingTrackId(null);
+            try {
+              await postPayment('/api/pi-payment-complete', { paymentId, txid, trackId: track.id });
+              setPaymentMessage(`Pembayaran berhasil. Unduhan ${track.title} siap.`);
+              const link = document.createElement('a');
+              link.href = track.src;
+              link.download = `${track.title}.mp3`;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              setBuyingTrackId(null);
+            } catch (error) {
+              setPaymentMessage(error instanceof Error ? error.message : 'Penyelesaian pembayaran gagal.');
+            }
           },
           onCancel: () => {
             setPaymentMessage('Pembayaran dibatalkan.');
             setBuyingTrackId(null);
           },
-          onError: () => {
-            setPaymentMessage('Pembayaran belum berhasil. Silakan coba lagi.');
+          onError: (error, payment) => {
+            if (payment) {
+              void resolveIncompletePiPayment(payment, setPaymentMessage).catch(() => undefined);
+            }
+            setPaymentMessage(error instanceof Error ? error.message : 'Pembayaran belum berhasil. Silakan coba lagi.');
             setBuyingTrackId(null);
           },
         },

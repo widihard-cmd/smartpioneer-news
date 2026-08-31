@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { resolveIncompletePiPayment } from '../lib/pi-payments';
 
 type AuthConfig = { sandbox: boolean };
 type SignedInUser = { uid: string; username: string };
@@ -19,7 +20,9 @@ export default function PiAuthButton() {
       const config = configResponse.ok ? await configResponse.json() as AuthConfig : { sandbox: true };
 
       await window.Pi.init({ version: '2.0', sandbox: config.sandbox });
-      const auth = await window.Pi.authenticate(['username'], () => undefined);
+      const auth = await window.Pi.authenticate(['username'], (payment) => {
+        void resolveIncompletePiPayment(payment).catch(() => undefined);
+      });
       const verifyResponse = await fetch('/api/pi-auth', {
         method: 'POST',
         credentials: 'include',
