@@ -3,18 +3,20 @@ import BaseLayout from '../components/BaseLayout.astro';
 import MusicLibrary from '../components/MusicLibrary';
 ---
 <BaseLayout title="Pi Music — Pioneer Indonesia" description="Dengarkan koleksi SmartPioneer dengan player, equalizer, playlist pribadi, dan play analytics.">
-  <section class="relative isolate overflow-hidden border-b border-gold-500/10">
-    <img src="/images/flow-music-hero-v1.png" alt="Flow menikmati Pi Music dengan headphone di studio" class="absolute inset-y-0 right-0 -z-10 hidden h-full w-[68%] object-cover object-center lg:block" loading="eager" fetchpriority="high" />
+  <section class="relative isolate min-h-[410px] overflow-hidden border-b border-gold-500/10">
+    <img src="/images/flow-music-hero-v1.png" alt="Flow menikmati Pi Music dengan headphone di studio" class="absolute inset-y-0 right-0 -z-10 hidden h-full w-[72%] object-contain object-right lg:block" loading="eager" fetchpriority="high" />
     <div class="absolute inset-0 -z-10 bg-[linear-gradient(90deg,#0d0520_0%,#0d0520_37%,rgba(13,5,32,.90)_49%,rgba(13,5,32,.20)_78%,rgba(13,5,32,.65)_100%)]"></div>
     <div class="absolute inset-x-0 bottom-0 -z-10 h-40 bg-[linear-gradient(0deg,#0d0520,transparent)]"></div>
-    <div class="mx-auto max-w-screen-xl px-5 pb-24 pt-32">
+    <div class="mx-auto max-w-screen-xl px-5 pb-12 pt-32">
       <div class="max-w-2xl">
         <p class="section-kicker">πWAVE • Pioneer Radio</p>
         <h1 class="section-title max-w-4xl">Musik yang menggerakkan komunitas.</h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-pi-200/70">Pilih lagu, simpan favorit ke playlist pribadi, lalu tetap dengarkan saat menjelajahi portal. Metadata seluruh koleksi sudah diseragamkan sebagai SmartPioneer Music.</p>
       </div>
       <figure class="mt-8 overflow-hidden rounded-2xl border border-gold-500/20 lg:hidden"><img src="/images/flow-music-hero-v1.png" alt="Flow menikmati Pi Music dengan headphone di studio" class="aspect-[16/9] w-full object-cover object-[70%_center]" loading="eager" /></figure>
-      <MusicLibrary client:load />
     </div>
+  </section>
+  <section class="mx-auto max-w-screen-xl px-5 pb-24 pt-10">
+    <MusicLibrary client:load />
   </section>
 </BaseLayout>
