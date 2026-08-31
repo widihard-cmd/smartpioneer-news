@@ -53,6 +53,11 @@
   to     = "/news"
   status = 301
 
+[[redirects]]
+  from   = "/api/pi-market"
+  to     = "/.netlify/functions/pi-market"
+  status = 200
+
 # ── Netlify Functions (webhook endpoint) ───────────────────────
 # POST /api/revalidate → memicu rebuild dari webhook eksternal
 # (Contentful webhook, Zapier, Make, dll.)

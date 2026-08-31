@@ -1,5 +1,8 @@
 ---
-import PortalPage from '../components/PortalPage.astro';
-const cards=[{title:'Harga Pi',body:'Belum terhubung ke penyedia data. Angka live baru akan tampil setelah API resmi dipilih.',meta:'Data source required'},{title:'Tren 24 Jam',body:'Area untuk perubahan harga, volume, dan rentang harian dengan timestamp yang jelas.',meta:'Market module'},{title:'Transparansi Data',body:'Setiap angka produksi wajib mencantumkan sumber, mata uang, dan waktu pembaruan.',meta:'Editorial rule'}];
+import BaseLayout from '../components/BaseLayout.astro';
+import PiMarketDashboard from '../components/PiMarketDashboard';
 ---
-<PortalPage kicker="Pi Market" title="Lihat pasar tanpa kehilangan konteks." intro="Dashboard pasar dirancang untuk cepat dipahami. Halaman ini sengaja tidak menampilkan angka palsu sebelum sumber data produksi dikonfigurasi." cards={cards}/>
+<BaseLayout title="Pi Market — Pioneer Indonesia" description="Harga Pi dalam rupiah, chart candlestick, dan statistik pasar dari CoinGecko.">
+  <section class="hero-shell relative overflow-hidden border-b border-gold-500/10"><span class="orb orb-one"></span><span class="orb orb-two"></span><div class="relative mx-auto max-w-7xl px-6 pb-4 pt-20 sm:px-10 lg:px-14"><p class="section-kicker">Pi Market · Indonesia</p><h1 class="section-title max-w-3xl">Pasar bergerak cepat. <span class="gold-gradient-text">Data harus tetap jernih.</span></h1><p class="mt-6 max-w-2xl text-base leading-8 text-white/60 sm:text-lg">Pantau harga Pi dalam rupiah, perubahan 24 jam, dan pola pasar tujuh hari terakhir dalam satu tampilan yang mudah dibaca.</p></div></section>
+  <PiMarketDashboard client:load />
+</BaseLayout>

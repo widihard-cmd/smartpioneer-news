@@ -1,0 +1,34 @@
+import { useEffect, useMemo, useState } from 'react';
+
+type Candle = { time: number; open: number; high: number; low: number; close: number };
+type MarketData = { source: string; symbol: string; currency: string; updatedAt: string; price: number | null; priceUsd: number | null; change24h: number | null; marketCap: number | null; volume24h: number | null; candles: Candle[] };
+
+const rupiah = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+const compact = new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 });
+const decimals = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+function CandlestickChart({ candles }: { candles: Candle[] }) {
+  const chart = useMemo(() => {
+    if (!candles.length) return null;
+    const values = candles.flatMap((candle) => [candle.high, candle.low]); const min = Math.min(...values); const max = Math.max(...values); const range = max - min || max * 0.02 || 1;
+    const width = 760; const height = 300; const padding = { top: 18, right: 18, bottom: 34, left: 56 }; const innerWidth = width - padding.left - padding.right; const innerHeight = height - padding.top - padding.bottom;
+    const y = (value: number) => padding.top + ((max - value) / range) * innerHeight; const x = (index: number) => padding.left + ((index + 0.5) / candles.length) * innerWidth; const bodyWidth = Math.max(4, Math.min(16, (innerWidth / candles.length) * 0.56));
+    return { width, height, padding, innerWidth, innerHeight, max, range, y, x, bodyWidth };
+  }, [candles]);
+  if (!chart) return <div className="flex h-[300px] items-center justify-center text-center text-sm text-white/45">Data candlestick belum tersedia dari penyedia data.</div>;
+  const grid = [0, .25, .5, .75, 1]; const labelEvery = Math.max(1, Math.ceil(candles.length / 5));
+  return <svg viewBox={`0 0 ${chart.width} ${chart.height}`} className="h-auto w-full overflow-visible" role="img" aria-label="Chart candlestick harga Pi dalam rupiah selama tujuh hari terakhir">
+    {grid.map((ratio) => { const value = chart.max - ratio * chart.range; const y = chart.padding.top + ratio * chart.innerHeight; return <g key={ratio}><line x1={chart.padding.left} x2={chart.width - chart.padding.right} y1={y} y2={y} stroke="rgba(255,255,255,.10)" /><text x={4} y={y + 4} fill="rgba(255,255,255,.52)" fontSize="11">{compact.format(value)}</text></g>; })}
+    {candles.map((candle, index) => { const x = chart.x(index); const rising = candle.close >= candle.open; const color = rising ? '#44d7a8' : '#ff7696'; const top = Math.min(chart.y(candle.open), chart.y(candle.close)); const bodyHeight = Math.max(2, Math.abs(chart.y(candle.open) - chart.y(candle.close))); const date = new Date(candle.time).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); return <g key={candle.time}><line x1={x} x2={x} y1={chart.y(candle.high)} y2={chart.y(candle.low)} stroke={color} strokeWidth="1.4" /><rect x={x - chart.bodyWidth / 2} y={top} width={chart.bodyWidth} height={bodyHeight} rx="1" fill={color} />{index % labelEvery === 0 && <text x={x} y={chart.height - 10} textAnchor="middle" fill="rgba(255,255,255,.48)" fontSize="10">{date}</text>}</g>; })}
+  </svg>;
+}
+
+export default function PiMarketDashboard() {
+  const [data, setData] = useState<MarketData | null>(null); const [message, setMessage] = useState('Memuat data pasar…');
+  useEffect(() => { let mounted = true; fetch('/api/pi-market').then(async (response) => { const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Data belum tersedia'); return payload as MarketData; }).then((payload) => { if (mounted) { setData(payload); setMessage(''); } }).catch((error: Error) => { if (mounted) setMessage(error.message); }); return () => { mounted = false; }; }, []);
+  const positive = (data?.change24h ?? 0) >= 0; const stats = data ? [['Market cap', data.marketCap ? rupiah.format(data.marketCap) : '—'], ['Volume 24 jam', data.volume24h ? rupiah.format(data.volume24h) : '—'], ['Harga USD', data.priceUsd ? `$${decimals.format(data.priceUsd)}` : '—']] : [];
+  return <section className="mx-auto max-w-7xl px-6 pb-14 pt-14 sm:px-10 lg:px-14"><div className="grid gap-6 lg:grid-cols-[.85fr_1.65fr]">
+    <aside className="rounded-[2rem] border border-gold-500/25 bg-[linear-gradient(145deg,rgba(91,46,180,.38),rgba(18,8,42,.82))] p-7 shadow-2xl shadow-black/20"><p className="section-kicker">Pi / Rupiah</p><div className="mt-6 flex items-center justify-between gap-3"><span className="text-5xl font-bold text-gold-400">π</span><span className="rounded-full border border-gold-500/30 bg-gold-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[.15em] text-gold-300">Live market</span></div><p className="mt-7 text-sm text-white/55">Harga Pi Network</p><p className="mt-1 text-3xl font-bold tracking-tight text-white sm:text-4xl">{data?.price ? rupiah.format(data.price) : '—'}</p><p className={`mt-3 inline-flex rounded-full px-3 py-1 text-sm font-semibold ${positive ? 'bg-emerald-400/10 text-emerald-300' : 'bg-rose-400/10 text-rose-300'}`}>{data?.change24h != null ? `${positive ? '+' : ''}${data.change24h.toFixed(2)}% · 24 jam` : 'Menunggu pembaruan'}</p><div className="mt-9 space-y-4 border-t border-white/10 pt-6">{stats.map(([label, value]) => <div key={label} className="flex justify-between gap-4 text-sm"><span className="text-white/50">{label}</span><span className="text-right font-semibold text-white/85">{value}</span></div>)}</div><p className="mt-8 text-xs leading-relaxed text-white/40">Data pasar bersumber dari CoinGecko. Harga dapat berubah cepat dan bukan merupakan saran finansial.</p></aside>
+    <div className="rounded-[2rem] border border-white/10 bg-white/[.035] p-5 sm:p-7"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="section-kicker">Grafik 7 hari</p><h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">Pergerakan harga Pi dalam rupiah</h1></div><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/55">Candlestick · 7D</span></div><div className="mt-7 rounded-2xl border border-white/8 bg-[#0e0621]/60 p-3 sm:p-5"><CandlestickChart candles={data?.candles ?? []} /></div><div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-white/45"><span>{message || `Terakhir diperbarui ${new Date(data!.updatedAt).toLocaleString('id-ID')}`}</span><span>Sumber: {data?.source || 'CoinGecko'}</span></div></div>
+  </div></section>;
+}
