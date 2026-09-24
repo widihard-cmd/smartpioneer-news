@@ -5,6 +5,27 @@ type MarketData = { source: string; updatedAt: string; stale?: boolean; price: n
 const rupiah = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 const compact = new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
 
+async function fetchMarket(): Promise<MarketData> {
+  try {
+    const response = await fetch('/api/pi-market', { cache: 'no-store' });
+    const payload = await response.json();
+    if (!response.ok || typeof payload.price !== 'number') throw new Error(payload.error || 'Server pasar belum tersedia');
+    return payload as MarketData;
+  } catch {
+    // Cloudflare's shared IP can be rate-limited even when a visitor can reach CoinGecko.
+    const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=idr&ids=pi-network&price_change_percentage=24h');
+    if (!response.ok) throw new Error(`CoinGecko belum bisa diakses (${response.status}). Coba lagi beberapa saat.`);
+    const market = (await response.json())?.[0];
+    if (!market || typeof market.current_price !== 'number') throw new Error('Harga Pi belum tersedia dari CoinGecko.');
+    return {
+      source: 'CoinGecko', updatedAt: market.last_updated || new Date().toISOString(),
+      price: market.current_price, change24h: market.price_change_percentage_24h ?? null,
+      marketCap: market.market_cap ?? null, volume24h: market.total_volume ?? null,
+      athIdr: market.ath ?? null, athDate: market.ath_date ?? null, candles: [],
+    };
+  }
+}
+
 function CandlestickChart({ candles }: { candles: Candle[] }) {
   const chart = useMemo(() => {
     if (!candles.length) return null;
@@ -27,8 +48,7 @@ export default function PiMarketDashboard() {
   const [message, setMessage] = useState('Memuat data pasar…');
   useEffect(() => {
     let active = true;
-    fetch('/api/pi-market', { cache: 'no-store' })
-      .then(async (response) => { const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Data belum tersedia'); return payload as MarketData; })
+    fetchMarket()
       .then((payload) => { if (active) { setData(payload); setMessage(''); } })
       .catch((error: Error) => { if (active) setMessage(error.message); });
     return () => { active = false; };

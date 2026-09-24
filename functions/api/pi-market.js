@@ -17,7 +17,12 @@ export async function onRequestGet({ env, request }) {
     const apiHeaders = { Accept: 'application/json' };
     if (env.COINGECKO_API_KEY) apiHeaders['x-cg-demo-api-key'] = env.COINGECKO_API_KEY;
     // One request supplies the quote, ATH and key statistics.
-    const marketResponse = await fetch(`${API_BASE}/coins/markets?vs_currency=idr&ids=${COIN_ID}&price_change_percentage=24h`, { headers: apiHeaders });
+    const marketUrl = `${API_BASE}/coins/markets?vs_currency=idr&ids=${COIN_ID}&price_change_percentage=24h`;
+    let marketResponse = await fetch(marketUrl, { headers: apiHeaders });
+    if (!marketResponse.ok && env.COINGECKO_API_KEY) {
+      // An expired/misconfigured optional key must not disable the public quote.
+      marketResponse = await fetch(marketUrl, { headers: { Accept: 'application/json' } });
+    }
     if (!marketResponse.ok) throw new Error(`CoinGecko ${marketResponse.status}`);
     const market = (await marketResponse.json())?.[0];
     if (finite(market?.current_price) === null) throw new Error('Invalid CoinGecko price');
