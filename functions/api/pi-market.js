@@ -1,28 +1,48 @@
 const API_BASE = 'https://api.coingecko.com/api/v3';
 const COIN_ID = 'pi-network';
-const FALLBACK_ATH_IDR = 48894.09;
-const FALLBACK_ATH_DATE = '2025-02-26T00:00:00.000Z';
+const REFRESH_MS = 5 * 60 * 1000;
 
-function number(value) { return typeof value === 'number' && Number.isFinite(value) ? value : null; }
+const finite = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 
-export async function onRequestGet({ env }) {
-  const headers = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' };
+export async function onRequestGet({ env, request }) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const cacheKey = new Request(new URL(request.url).origin + '/api/pi-market?cached=1');
+  const cached = cache ? await cache.match(cacheKey) : null;
+  const previous = cached ? await cached.json() : null;
+  if (previous && Date.now() - Date.parse(previous.fetchedAt) < REFRESH_MS) {
+    return Response.json(previous, { headers: { 'Cache-Control': 'public, max-age=60' } });
+  }
+
   try {
     const apiHeaders = { Accept: 'application/json' };
     if (env.COINGECKO_API_KEY) apiHeaders['x-cg-demo-api-key'] = env.COINGECKO_API_KEY;
-    const [priceResponse, detailResponse, ohlcResponse] = await Promise.all([
-      fetch(`${API_BASE}/simple/price?ids=${COIN_ID}&vs_currencies=idr,usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`, { headers: apiHeaders }),
-      fetch(`${API_BASE}/coins/${COIN_ID}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`, { headers: apiHeaders }),
-      fetch(`${API_BASE}/coins/${COIN_ID}/ohlc?vs_currency=idr&days=7&precision=full`, { headers: apiHeaders }),
-    ]);
-    if (!priceResponse.ok) throw new Error('Price unavailable');
-    const quote = (await priceResponse.json())[COIN_ID];
-    if (!quote) throw new Error('Quote unavailable');
-    const detail = detailResponse.ok ? await detailResponse.json() : null;
-    const rawOhlc = ohlcResponse.ok ? await ohlcResponse.json() : [];
-    const candles = Array.isArray(rawOhlc) ? rawOhlc.map(([time, open, high, low, close]) => ({ time: number(time), open: number(open), high: number(high), low: number(low), close: number(close) })).filter((candle) => Object.values(candle).every((value) => value !== null)) : [];
-    return new Response(JSON.stringify({ source: 'CoinGecko', symbol: 'PI', currency: 'IDR', updatedAt: number(quote.last_updated_at) ? new Date(quote.last_updated_at * 1000).toISOString() : new Date().toISOString(), price: number(quote.idr), priceUsd: number(quote.usd), change24h: number(quote.idr_24h_change), marketCap: number(quote.idr_market_cap), volume24h: number(quote.idr_24h_vol), athIdr: number(detail?.market_data?.ath?.idr) ?? FALLBACK_ATH_IDR, athDate: detail?.market_data?.ath_date?.idr || FALLBACK_ATH_DATE, candles }), { headers });
+    // One request supplies the quote, ATH and key statistics.
+    const marketResponse = await fetch(`${API_BASE}/coins/markets?vs_currency=idr&ids=${COIN_ID}&price_change_percentage=24h`, { headers: apiHeaders });
+    if (!marketResponse.ok) throw new Error(`CoinGecko ${marketResponse.status}`);
+    const market = (await marketResponse.json())?.[0];
+    if (finite(market?.current_price) === null) throw new Error('Invalid CoinGecko price');
+
+    let candles = previous?.candles || [];
+    try {
+      const chartResponse = await fetch(`${API_BASE}/coins/${COIN_ID}/ohlc?vs_currency=idr&days=7`, { headers: apiHeaders });
+      if (chartResponse.ok) {
+        const raw = await chartResponse.json();
+        if (Array.isArray(raw)) candles = raw.map(([time, open, high, low, close]) => ({ time, open, high, low, close })).filter((item) => Object.values(item).every((value) => finite(value) !== null));
+      }
+    } catch { /* The chart is optional; never hide the quote. */ }
+
+    const payload = {
+      source: 'CoinGecko', symbol: 'PI', currency: 'IDR', fetchedAt: new Date().toISOString(), stale: false,
+      updatedAt: market.last_updated || new Date().toISOString(),
+      price: finite(market.current_price), priceUsd: null,
+      change24h: finite(market.price_change_percentage_24h),
+      marketCap: finite(market.market_cap), volume24h: finite(market.total_volume),
+      athIdr: finite(market.ath), athDate: market.ath_date || null, candles,
+    };
+    if (cache) await cache.put(cacheKey, Response.json(payload, { headers: { 'Cache-Control': 'public, max-age=86400' } }));
+    return Response.json(payload, { headers: { 'Cache-Control': 'public, max-age=60' } });
   } catch {
-    return new Response(JSON.stringify({ error: 'Data Pi Market sementara belum tersedia. Silakan coba lagi beberapa saat.', source: 'CoinGecko' }), { status: 503, headers });
+    if (previous) return Response.json({ ...previous, stale: true }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ error: 'Harga Pi belum dapat diambil dari CoinGecko. Coba muat ulang sebentar lagi.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
 }
